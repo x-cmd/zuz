@@ -6,7 +6,7 @@ PARALLELISM=8
 
 repeated_bytes() {
 	n="$1"
-	dd if=/dev/zero bs="$n" count=1 2>/dev/null | tr '\0' 'A'
+	dd if=/dev/zero bs="$n" count=1 2>/dev/null | tr '\0' 'a'
 }
 export -f repeated_bytes
 
@@ -56,7 +56,7 @@ run_parallel() {
 }
 
 
-seq 21740000 21760000 | run_parallel 'trial_custom {}'
+seq 21730000 21760000 | run_parallel 'trial_custom {}'
 seq 21705000 21736000 | run_parallel 'trial_zlib {}'
 seq 21705000 21736000 | run_parallel 'trial_infozip {}'
 seq 21713000 21746000 | run_parallel 'trial_zopfli {}'
