@@ -2,7 +2,7 @@ CC ?= gcc
 CFLAGS ?= -O2
 
 .PHONY: all
-all:
+all: max_uncompressed_size.png max_uncompressed_size.svg
 
 versions.txt:
 	( \
@@ -29,5 +29,12 @@ zipbomb.py:
 
 compressed_size.csv: compressed_size.csv.tmp
 	(echo "engine,uncompressed_size,compressed_size"; sort "$<" | uniq) > "$@"
+
+max_uncompressed_size.png max_uncompressed_size.pdf: graphs.R
+	Rscript "$<" "$@"
+.INTERMEDIATE: max_uncompressed_size.pdf
+
+%.svg: %.pdf
+	inkscape --export-plain-svg="$@" "$<"
 
 .DELETE_ON_ERROR:
