@@ -45,9 +45,9 @@ it expands fully after a single round of decompression.
 The output size increases quadratically in the input size,
 reaching a compression ratio of over 28~million
 ($\SI{10}{\MB} \rightarrow \SI{281}{\TB}$)
-at the limits of what a zip file can represent.
-Even greater performance is possible using
-64-bit extensions to the zip format.
+at the limits of the zip format.
+Even greater expansion is possible using
+64-bit extensions.
 The construction uses only the most common compression algorithm, DEFLATE,
 and is compatible with most zip implementations.
 \end{abstract}
@@ -55,14 +55,60 @@ and is compatible with most zip implementations.
 
 \section{Introduction}
 
-A paragraph of text goes here. Lots of text. Plenty of interesting
-text. Text text text text text text text text text text text text text
-text text text text text text text text text text text text text text
-text text text text text text text text text text text text text text
-text text text text text text text.
-More fascinating text. Features galore, plethora of promises.
+Compression bombs that use the zip format
+must cope with the fact that DEFLATE,
+the only compression algorithm universally supported by zip parsers,
+cannot achieve a compression ratio greater than
+\num{1032}~\cite{zlib_tech}.
+For this reason, zip bombs typically rely on recursive decompression,
+nesting zip files within zip files to get an extra factor of 1032 with each layer.
+But the trick only works on parsers that
+unzip recursively, and most do not.
+The best-known zip bomb, 42.zip~\cite{42.zip},
+expands to a formidable \SI{4.5}{\PB}
+if all six of its layers are recursively unzipped,
+but a measly \SI{0.6}{\MB} at the top layer.
+Zip quines, like those of
+Ellingsen~\cite{ellingsen}
+and Cox~\cite{cox},
+contain a copy of themselves
+and thus expand infinitely if recursively unzipped,
+but are likewise perfectly safe to unzip once.
 
-\cite{190996}
+This article shows how to construct a non-recursive zip bomb
+with a compression ratio that surpasses the DEFLATE limit of 1032.
+It works by overlapping files inside the zip container,
+in order to reference a ``kernel'' of highly compressed data multiple times,
+without making multiple copies of it.
+The output size grows quadratically in the input size; i.e.,
+the compression ratio gets better as the input file gets bigger.
+The construction depends on specific features of both zip and DEFLATE---it
+is not portable to other file formats or compression algorithms.
+It works with zip parsers that work in the standard way
+of reading file locations from a central directory,
+but not with ``streaming'' parsers that try to parse in one pass.
+
+<p>
+Our goals are:
+</p>
+<ul>
+<li>
+Maximize the compression ratio.
+We define the compression ratio as the the sum of the sizes
+of all the files contained the in the zip file,
+divided by the size of the zip file itself.
+We don't count filenames or other filesystem metadata,
+only file contents.
+</li>
+<li>
+Be compatible.
+Zip is a tricky format and zip parsers differ especially
+around edge cases and optional features.
+Try to use only features that are universally supported.
+We will look at some cases where efficiency can be increased
+at the cost of compatibility.
+</li>
+</ul>
 
 \section{Structure of a zip file}
 
@@ -75,6 +121,8 @@ The structure of a normal zip file.
 \end{figure*}
 
 \section{Overlapping files}
+
+\cite{SAR-PR-2006-04}
 
 \begin{figure*}
 \includegraphics{figures/overlap}
