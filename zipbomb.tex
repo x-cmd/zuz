@@ -1,6 +1,7 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix2019_v3}
 \usepackage{graphicx}
+\usepackage[binary-units,number-unit-product=~]{siunitx}
 % \usepackage[hyphens]{url}
 % \urlstyle{same}
 
@@ -12,6 +13,14 @@
 \pdfsuppressptexinfo=-1
 \hypersetup{pdfcreator={},pdfproducer={}}
 \fi
+
+\newcommand{\kB}{\kilo\byte}
+\newcommand{\MB}{\mega\byte}
+\newcommand{\GB}{\giga\byte}
+\newcommand{\TB}{\tera\byte}
+\newcommand{\PB}{\peta\byte}
+\newcommand{\EB}{\exa\byte}
+\newcommand{\EiB}{\exbi\byte}
 
 \begin{document}
 
@@ -35,7 +44,7 @@ a decompressor's recursively unpacking zip files nested within zip files:
 it expands fully after a single round of decompression.
 The output size increases quadratically in the input size,
 reaching a compression ratio of over 28~million
-$\mbox{10~MB} \rightarrow \mbox{281~TB}$)
+($\SI{10}{\MB} \rightarrow \SI{281}{\TB}$)
 at the limits of what a zip file can represent.
 Even greater performance is possible using
 64-bit extensions to the zip format.
@@ -55,7 +64,9 @@ More fascinating text. Features galore, plethora of promises.
 
 \cite{190996}
 
-\section*{Acknowledgements}
+\section{Structure of a zip file}
+
+% \section*{Acknowledgements}
 
 \section*{Availability}
 
