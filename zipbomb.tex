@@ -1,0 +1,67 @@
+\documentclass[letterpaper,twocolumn,10pt]{article}
+\usepackage{usenix2019_v3}
+\usepackage{graphicx}
+% \usepackage[hyphens]{url}
+% \urlstyle{same}
+
+% Disable metadata for reproducible PDF.
+% https://tex.stackexchange.com/a/313605
+\ifpdf
+\pdfinfoomitdate=1
+\pdftrailerid{}
+\pdfsuppressptexinfo=-1
+\hypersetup{pdfcreator={},pdfproducer={}}
+\fi
+
+\begin{document}
+
+\date{}
+
+\title{\Large \bf A better zip bomb}
+
+\author{
+% {\rm David Fifield}
+}
+
+\maketitle
+
+\begin{abstract}
+We show how to construct a
+\emph{non-recursive} zip bomb
+that achieves a high compression ratio by
+overlapping files inside the zip container.
+``Non-recursive'' means that it does not rely on
+a decompressor's recursively unpacking zip files nested within zip files:
+it expands fully after a single round of decompression.
+The output size increases quadratically in the input size,
+reaching a compression ratio of over 28~million
+$\mbox{10~MB} \rightarrow \mbox{281~TB}$)
+at the limits of what a zip file can represent.
+Even greater performance is possible using
+64-bit extensions to the zip format.
+The construction uses only the most common compression algorithm, DEFLATE,
+and is compatible with most zip implementations.
+\end{abstract}
+
+
+\section{Introduction}
+
+A paragraph of text goes here. Lots of text. Plenty of interesting
+text. Text text text text text text text text text text text text text
+text text text text text text text text text text text text text text
+text text text text text text text text text text text text text text
+text text text text text text text.
+More fascinating text. Features galore, plethora of promises.
+
+\cite{190996}
+
+\section*{Acknowledgements}
+
+\section*{Availability}
+
+% \url{https://www.bamsoftware.com/hacks/zipbomb/}
+
+\bibliographystyle{plain}
+\bibliography{zipbomb}
+
+\end{document}
