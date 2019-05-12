@@ -1,15 +1,21 @@
 PDFLATEX = pdflatex -halt-on-error -file-line-error -interaction=nonstopmode
 BIBTEX = bibtex
 
-GRAPHS =
+# -nosafe needed for opacity: https://tex.stackexchange.com/a/473911
+ASYMPOTE = asy -nosafe
 
-zipbomb.pdf: zipbomb.tex zipbomb.bib $(GRAPHS)
+FIGURES = figures/normal.pdf figures/overlap.pdf figures/quote.pdf
+
+zipbomb.pdf: zipbomb.tex zipbomb.bib $(FIGURES)
 
 %.pdf %.bbl: %.tex
 	$(PDFLATEX) $*
 	$(BIBTEX) $*
 	$(PDFLATEX) $*
 	$(PDFLATEX) $*
+
+figures/%.pdf: figures/%.asy figures/common.asy
+	$(ASYMPOTE) -f pdf -cd "$(dir $<)" "$(notdir $<)"
 
 .PHONY: clean
 clean:
