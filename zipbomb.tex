@@ -1,6 +1,7 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix2019_v3}
 \usepackage{amssymb}
+\usepackage{fancyvrb}
 \usepackage{graphicx}
 \usepackage{makecell}
 \usepackage{pifont}
@@ -182,74 +183,75 @@ a single file whose data is the kernel.
 See \autoref{fig:overlap}.
 
 Let's look at an example to see how this construction affects the compression ratio.
-Suppose the kernel is \num{1000}~bytes and
+Suppose the kernel is \SI{1000}{bytes} and
 decompresses to \SI{1}{\MB}.
 Then the first \SI{1}{\MB} of output ``costs''
-\num{1078} bytes of input:
-\num{31} bytes for a local file header (including a 1-byte filename)</li>
-<li>47 bytes for a central directory header (including a 1-byte filename)</li>
-<li>1000 bytes for the kernel</li>
-</ul>
-<p>
-But each additional <data value="1000000"><abbr title=megabyte>MB</abbr></data> of output
-only costs 47 bytes—we don't need another copy of the local file header or the kernel,
+\SI{1078}{bytes} of input:
+\SI{31}{bytes} for a local file header (including a 1-byte filename),
+\SI{47}{bytes} for a central directory header (including a 1-byte filename), and
+\SI{1000}{bytes} for the kernel itself.
+But each \SI{1}{\MB} of output
+after the first costs only \SI{47}{bytes}---we don't need another copy of the local file header or the kernel,
 only an additional central directory header.
-The overall compression ratio is
-$(\num{1000000} N) / (\num{47} N + 30 + 1000) \rightarrow {\sim}\num{21000}$,
-and gets better as the kernel gets bigger.
+So while the first copy of the kernel has a compression ratio of
+$\num{1000000}/\num{1078}\approx \num{928}$,
+each additional copy pulls the ratio closer to
+$\num{1000000}/\num{47}\approx \num{21277}$.
+A~bigger kernel raises the ceiling.
 
-<p>
-The problem with this idea is that it's not very compatible.
-The file metadata—the filename specifically—doesn't match
-between the central directory header and local file header.
-Some zip parsers only look at the metadata of one header or the other,
-but other parsers look at both and compare.
-<a href="http://infozip.sourceforge.net/UnZip.html">Info-ZIP UnZip</a>
-(the standard Unix <code>unzip</code> program)
-extracts the files, but with warnings:
-</p>
-<figure>
-<pre>
-$ <kbd>unzip overlap.zip</kbd>
-<samp>  inflating: A
+The problem with this idea is a lack of compatibility.
+The file metadata---the filename specifically---doesn't match
+between the central directory header and local file header,
+and some parsers balk at that.
+See \autoref{tab:compatibility}.
+Info-ZIP UnZip~\cite{infozip-unzip}
+(the standard Unix \texttt{unzip} program)
+extracts the files, but displays warnings:
+
+{\small
+\begin{Verbatim}[commandchars=\\\{\}]
+$ \textbf{unzip overlap.zip}
+  inflating: A
 B:  mismatching "local" filename (A),
          continuing with "central" filename version
   inflating: B
-<i>...</i></samp>
-</pre>
-</figure>
-<p>
-The Python <a href="https://docs.python.org/3/library/zipfile.html">zipfile</a> module
-% <a href="https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1486-L1489">throws an error</a>
-when filenames don't match:
-</p>
-<figure>
-<pre>
-$ <kbd>python3 -m zipfile -e overlap.zip .</kbd>
-<samp>Traceback (most recent call last):
-<i>...</i>
-% __main__.BadZipFile: File name in directory 'B' and header b'A' differ.</samp>
-</pre>
-</figure>
-<!--
-<p>
-We could make every central directory header have the same filename
-as the local file header, but that too is unsatisfying
-because it means that if extracted to disk,
-all the files will just overwrite each other and not take up more space
-than a single file.
-</p>
--->
+\textit{...}
+\end{Verbatim}
+}
 
-<p>
-If you are targeting a specific zip parser that you know
-does not check for filename consistency,
-this construction is a good one.
-It grows faster (as a function of the input size)
-than the construction of the next section,
-which has better compatibility
-because it uses separate local file headers.
-</p>
+And the Python zipfile module~\cite{python-zipfile}
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1486-L1489}{throws an exception}
+when filenames don't match:
+
+{\small
+\begin{Verbatim}[commandchars=\\\{\}]
+$ \textbf{python3 -m zipfile -e overlap.zip .}
+Traceback (most recent call last):
+\textit{...}
+__main__.BadZipFile: File name in directory 'B' and header b'A' differ.
+\end{Verbatim}
+}
+
+
+% <!--
+% <p>
+% We could make every central directory header have the same filename
+% as the local file header, but that too is unsatisfying
+% because it means that if extracted to disk,
+% all the files will just overwrite each other and not take up more space
+% than a single file.
+% </p>
+% -->
+% 
+% <p>
+% If you are targeting a specific zip parser that you know
+% does not check for filename consistency,
+% this construction is a good one.
+% It grows faster (as a function of the input size)
+% than the construction of the next section,
+% which has better compatibility
+% because it uses separate local file headers.
+% </p>
 
 
 Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
