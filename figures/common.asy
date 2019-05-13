@@ -9,7 +9,7 @@ real tierradius = ht/8;
 real spansp = ht/2.5;
 real capsuleradius = 2b;
 
-pen filenamepen = Helvetica() + fontsize(10pt);
+pen filenamepen = Helvetica() + fontsize(9pt);
 pen labelpen = TimesRoman() + fontsize(10pt);
 texpreamble("\usepackage{mathptmx}");
 
@@ -66,8 +66,8 @@ void draw_capsule(Capsule c) {
 		:: {down}(sp, ht/2){down}
 		:: {right}(capsuleradius+sp, 0)
 		-- cycle;
-	label(pic, baseline(c.filename), ((capsuleradius+c.header)/2, ht*1/3), p=filenamepen);
-	label(pic, baseline(c.label), ((capsuleradius+c.header)/2, ht*3/4), p=labelpen);
+	label(pic, baseline(c.filename), ((capsuleradius+c.header)/2, ht*1/4), p=filenamepen);
+	label(pic, baseline(c.label), ((capsuleradius+c.header)/2, ht*2/3), p=labelpen);
 	label(pic, baseline(c.bodylabel), ((c.header+c.header+c.body-capsuleradius)/2, ht*1/2), p=labelpen);
 	clip(pic, boundary);
 	add(shift(c.start, 0) * pic);

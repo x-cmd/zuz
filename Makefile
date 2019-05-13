@@ -8,11 +8,12 @@ FIGURES = figures/normal.pdf figures/overlap.pdf figures/quote.pdf
 
 zipbomb.pdf: zipbomb.tex zipbomb.bib $(FIGURES)
 
-%.pdf %.bbl: %.tex
-	$(PDFLATEX) $*
-	$(BIBTEX) $*
-	$(PDFLATEX) $*
-	$(PDFLATEX) $*
+%.pdf: %.tex
+	rm -f "$*.aux" "$*.bbl"
+	$(PDFLATEX) -draftmode "$*"
+	$(BIBTEX) "$*"
+	$(PDFLATEX) -draftmode "$*"
+	$(PDFLATEX) "$*"
 
 figures/%.pdf: figures/%.asy figures/common.asy
 	$(ASYMPOTE) -f pdf -cd "$(dir $<)" "$(notdir $<)"

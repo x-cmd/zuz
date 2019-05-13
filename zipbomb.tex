@@ -1,9 +1,17 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix2019_v3}
+\usepackage{amssymb}
 \usepackage{graphicx}
+\usepackage{makecell}
+\usepackage{pifont}
+\usepackage{xcolor}
 \usepackage[binary-units,number-unit-product=~]{siunitx}
-% \usepackage[hyphens]{url}
-% \urlstyle{same}
+
+\urlstyle{same}
+\def\sectionautorefname{Section}
+\def\subsectionautorefname{Section}
+% Better look for citations that include a section reference like \cite[\S 3]{foobar}.
+\renewcommand{\citemid}{~}
 
 % Disable metadata for reproducible PDF.
 % https://tex.stackexchange.com/a/313605
@@ -22,6 +30,10 @@
 \newcommand{\EB}{\exa\byte}
 \newcommand{\EiB}{\exbi\byte}
 
+\newcommand{\yes}{\cellcolor{YellowGreen}\checkmark}
+\newcommand{\no}{\cellcolor{Bittersweet}\ding{55}}
+\newcommand{\maybe}[1]{\cellcolor{GreenYellow}#1}
+
 \begin{document}
 
 \date{}
@@ -29,6 +41,7 @@
 \title{\Large \bf A better zip bomb}
 
 \author{
+% ANON
 % {\rm David Fifield}
 }
 
@@ -54,6 +67,7 @@ and is compatible with most zip implementations.
 
 
 \section{Introduction}
+\label{sec:intro}
 
 Compression bombs that use the zip format
 must cope with the fact that DEFLATE,
@@ -71,46 +85,48 @@ but a measly \SI{0.6}{\MB} at the top layer.
 Zip quines, like those of
 Ellingsen~\cite{ellingsen}
 and Cox~\cite{cox},
-contain a copy of themselves
+which contain a copy of themselves
 and thus expand infinitely if recursively unzipped,
-but are likewise perfectly safe to unzip once.
+are likewise perfectly safe to unzip once.
 
 This article shows how to construct a non-recursive zip bomb
-with a compression ratio that surpasses the DEFLATE limit of 1032.
+whose compression ratio surpasses the DEFLATE limit of 1032.
 It works by overlapping files inside the zip container,
-in order to reference a ``kernel'' of highly compressed data multiple times,
-without making multiple copies of it.
-The output size grows quadratically in the input size; i.e.,
+in order to include a ``kernel'' of highly compressed data
+in multiple files, without making multiple copies of it.
+The zip bomb's output size grows quadratically in the input size; i.e.,
 the compression ratio gets better as the input file gets bigger.
 The construction depends on specific features of both zip and DEFLATE---it
-is not portable to other file formats or compression algorithms.
-It works with zip parsers that work in the standard way
-of reading file locations from a central directory,
-but not with ``streaming'' parsers that try to parse in one pass.
-
-<p>
-Our goals are:
-</p>
-<ul>
-<li>
+is not portable to other container formats or compression algorithms.
+It is compatible with most zip parsers,
+the exceptions being ``streaming'' parsers that
+parse in one pass without first consulting the zip file's central directory.
+The zip bomb construction tries to balance
+two competing goals:
+\begin{itemize}
+\item
 Maximize the compression ratio.
 We define the compression ratio as the the sum of the sizes
 of all the files contained the in the zip file,
 divided by the size of the zip file itself.
-We don't count filenames or other filesystem metadata,
-only file contents.
-</li>
-<li>
+It does not count filenames or other filesystem metadata,
+only contents.
+\item
 Be compatible.
-Zip is a tricky format and zip parsers differ especially
+Zip is a tricky format and parsers differ, especially
 around edge cases and optional features.
-Try to use only features that are universally supported.
-We will look at some cases where efficiency can be increased
-at the cost of compatibility.
-</li>
-</ul>
+Avoid taking advantage of tricks that only work with certain parsers.
+We will remark on ways to increase the efficiency of the zip bomb
+that come with some loss of compatibility.
+\end{itemize}
+
 
 \section{Structure of a zip file}
+\label{sec:zipstructure}
+
+Zip is a container format...
+
+hey ho \autoref{fig:normal}
 
 \begin{figure*}
 \includegraphics{figures/normal}
@@ -120,19 +136,28 @@ The structure of a normal zip file.
 \label{fig:normal}
 \end{figure*}
 
-\section{Overlapping files}
 
-\cite{SAR-PR-2006-04}
+\section{Overlapping files}
+\label{sec:overlap}
+
+Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
+used overlapping files to achieve
+almost complete replication of the zip file itself.
 
 \begin{figure*}
 \includegraphics{figures/overlap}
 \caption{
 xxx
+The ``kernel'' is a block of DEFLATE-compressed data
+that has a compression ratio
+close to the maximum of \num{1032}.
 }
 \label{fig:overlap}
 \end{figure*}
 
+
 \section{Quoting file headers}
+\label{sec:quote}
 
 \begin{figure*}
 \includegraphics{figures/quote}
@@ -142,10 +167,135 @@ xxx
 \label{fig:quote}
 \end{figure*}
 
+
+\section{Optimization}
+\label{sec:optimization}
+
+\subsection{Allocation}
+\label{sec:allocation}
+
+
+\section{Zip64}
+\label{sec:zip64}
+
+
+\begin{table*}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{rccccccc}
+&
+\thead{Info-ZIP\\UnZip~6.0~\cite{infozip-unzip}} &
+\thead{Python~3.7\\zipfile~\cite{python-zipfile}} &
+\thead{Go~1.12\\archive/zip~\cite{golang-archivezip}} &
+\thead{yauzl~2.10.0~\cite{yauzl}\\(Node.js)} &
+\thead{Nail~\cite{186219}\\examples/zip~\cite{nail-zip}} &
+\thead{Android~9.0.0~r1\\libziparchive~\cite{android-libziparchive}} &
+\thead{sunzip~0.4~\cite{sunzip}\\(streaming)}
+\\
+\thead[r]{DEFLATE} &
+\yes &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L57}{\yes} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/struct.go#L31}{\yes} &
+\href{https://github.com/thejoshwolfe/yauzl/blob/2.10.0/index.js#L520-L521}{\yes} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.c#L63}{\yes} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#1059}{\yes} &
+\href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1256}{\yes}
+\\
+\thead[r]{Zip64} &
+\href{http://infozip.sourceforge.net/UnZip.html#Release}{\yes} &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L186}{\yes} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L519}{\yes} &
+\href{https://github.com/thejoshwolfe/yauzl/tree/2.10.0#limitted-zip64-support}{\yes} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.c#L103-L125}{\no} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#168}{\no} &
+\href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L922}{\yes}
+\\
+\thead[r]{bzip2} &
+\href{http://infozip.sourceforge.net/UnZip.html#Release}{\yes} &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L58}{\yes} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/struct.go#L28-L32}{\no} &
+\href{https://github.com/thejoshwolfe/yauzl/blob/2.10.0/index.js#L517-L525}{\no} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.c#L86}{\no} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#1061}{\no} &
+\href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1256}{\yes}
+\\
+\thead[r]{tolerates mismatched filenames} &
+\maybe{warns} &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1486-L1489}{\no} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L244}{\yes} &
+\href{https://github.com/thejoshwolfe/yauzl/tree/2.10.0#local-file-headers-are-ignored}{\yes} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L49}{\yes} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#594}{\no} &
+\href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1268-L1269}{\yes}
+\\
+\thead[r]{tolerates incorrect CRC-32} &
+\maybe{warns} &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L893-L894}{\no} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L219-L224}{\maybe{if zero}} &
+\href{https://github.com/thejoshwolfe/yauzl/tree/2.10.0#no-crc-32-checking}{\yes} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L41}{\no} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#52}{\yes} &
+\href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1465-L1469}{\no}
+\\
+\thead[r]{permits file size of $2^{32}-1$} &
+\yes &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1311-L1313}{\yes} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L406-L414}{\yes} &
+\href{https://github.com/thejoshwolfe/yauzl/blob/2.10.0/index.js#L333-L348}{\no} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L59}{\yes} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive_common.h#95}{\yes} &
+\href{https://github.com/madler/sunzip/blob/master/sunzip.c#L1275-L1277}{\yes}
+\\
+\thead[r]{permits file count of $2^{16}-1$} &
+\yes &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L893-L894}{\yes} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L502-L511}{\yes} &
+\href{https://github.com/thejoshwolfe/yauzl/issues/108}{\no} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L79}{\yes} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive_common.h#51}{\yes} &
+\href{https://github.com/madler/sunzip/blob/master/sunzip.c#L1139}{\yes}
+\\
+\noalign{\vspace{0.5em}}
+\thead[r]{parses full overlap\\(\autoref{sec:overlap})} &
+\maybe{warns} &
+\no &
+\yes &
+\yes &
+\yes &
+\no &
+\no
+\\
+\thead[r]{parses quoted overlap\\(\autoref{sec:quote})} &
+\yes &
+\yes &
+\yes &
+\yes &
+\yes &
+\yes &
+\no
+\\
+\thead[r]{parses Zip64 quoted overlap\\(\autoref{sec:zip64})} &
+\yes &
+\yes &
+\yes &
+\yes &
+\no &
+\no &
+\no
+\end{tabular}
+\caption{
+Compatibility of selected zip parsers with various zip features,
+edge cases,
+and input files.
+}
+\label{tab:compatibility}
+\end{table*}
+
+% ANON
 % \section*{Acknowledgements}
 
-\section*{Availability}
-
+% ANON
+% \section*{Availability}
 % \url{https://www.bamsoftware.com/hacks/zipbomb/}
 
 \bibliographystyle{plain}
