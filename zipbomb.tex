@@ -32,6 +32,9 @@
 \newcommand{\EB}{\exa\byte}
 \newcommand{\EiB}{\exbi\byte}
 
+\newcommand{\CDH}{\mbox{CDH}}
+\newcommand{\LFH}{\mbox{LFH}}
+
 \newcommand{\yes}{\cellcolor{YellowGreen}\checkmark}
 \newcommand{\no}{\cellcolor{Bittersweet}\ding{55}}
 \newcommand{\maybe}[1]{\cellcolor{GreenYellow}#1}
@@ -161,7 +164,8 @@ particularly Section~4.3.
 \begin{figure*}
 \includegraphics{figures/normal}
 \caption{
-The structure of a normal zip file.
+A normal zip file
+(\autoref{sec:zipstructure}).
 }
 \label{fig:normal}
 \end{figure*}
@@ -182,6 +186,20 @@ making many central directory headers point to
 a single file whose data is the kernel.
 See \autoref{fig:overlap}.
 
+\begin{figure*}
+\includegraphics{figures/overlap}
+\caption{
+Preliminary, full-overlap zip bomb construction
+(\autoref{sec:overlap}).
+This construction has problems with compatibility,
+because filenames do not agree between the
+central directory headers and the local file headers.
+The ``kernel'' is a block of highly compressed data,
+reused in every file.
+}
+\label{fig:overlap}
+\end{figure*}
+
 Let's look at an example to see how this construction affects the compression ratio.
 Suppose the kernel is \SI{1000}{bytes} and
 decompresses to \SI{1}{\MB}.
@@ -200,13 +218,13 @@ $\num{1000000}/\num{47}\approx \num{21277}$.
 A~bigger kernel raises the ceiling.
 
 The problem with this idea is a lack of compatibility.
-The file metadata---the filename specifically---doesn't match
+The file metadata---specifically the filename---doesn't match
 between the central directory header and local file header,
 and some parsers balk at that.
 See \autoref{tab:compatibility}.
 Info-ZIP UnZip~\cite{infozip-unzip}
 (the standard Unix \texttt{unzip} program)
-extracts the files, but displays warnings:
+extracts the files, but with warnings:
 
 {\small
 \begin{Verbatim}[commandchars=\\\{\}]
@@ -219,6 +237,7 @@ B:  mismatching "local" filename (A),
 \end{Verbatim}
 }
 
+\noindent
 And the Python zipfile module~\cite{python-zipfile}
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1486-L1489}{throws an exception}
 when filenames don't match:
@@ -228,22 +247,16 @@ when filenames don't match:
 $ \textbf{python3 -m zipfile -e overlap.zip .}
 Traceback (most recent call last):
 \textit{...}
-__main__.BadZipFile: File name in directory 'B' and header b'A' differ.
+__main__.BadZipFile: File name in directory 'B' \textbackslash
+and header b'A' differ.
 \end{Verbatim}
 }
 
+Next we will see how to modify this construction
+for filename consistency,
+while still retaining most of the advantage
+of overlapping files.
 
-% <!--
-% <p>
-% We could make every central directory header have the same filename
-% as the local file header, but that too is unsatisfying
-% because it means that if extracted to disk,
-% all the files will just overwrite each other and not take up more space
-% than a single file.
-% </p>
-% -->
-% 
-% <p>
 % If you are targeting a specific zip parser that you know
 % does not check for filename consistency,
 % this construction is a good one.
@@ -251,47 +264,131 @@ __main__.BadZipFile: File name in directory 'B' and header b'A' differ.
 % than the construction of the next section,
 % which has better compatibility
 % because it uses separate local file headers.
-% </p>
 
 
-Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
-used overlapping files to achieve
-almost complete replication of the zip file itself.
-
-\begin{figure*}
-\includegraphics{figures/overlap}
-\caption{
-xxx
-The ``kernel'' is a block of DEFLATE-compressed data
-that has a compression ratio
-close to the maximum of \num{1032}.
-}
-\label{fig:overlap}
-\end{figure*}
-
-
-\section{Quoting file headers}
+\section{The second insight: quoting\\local file headers}
 \label{sec:quote}
+
+We need to somehow separate the local file headers for each file,
+while still reusing a single kernel.
+We'll use a feature of DEFLATE, non-compressed blocks,
+to ``quote'' local file headers that occur later in the file
+so that they appear to be part of the same DEFLATE stream
+that terminates in the kernel.
+Every local file header,
+except the first,
+will be interpreted two ways:
+as code (part of the structure of the zip file format)
+and as data (part of the output file data).
+
+A~DEFLATE stream is a sequence of
+blocks~\cite[\S 3.2.3]{rfc1951},
+where each block can be compressed or non-compressed.
+Compressed blocks are what we usually think of;
+for example the kernel is one big compressed block.
+But there are also non-compressed blocks,
+which start with a
+5-byte header~\cite[\S 3.2.4]{rfc1951}
+that means simply, ``output the next $n$ bytes verbatim.''
+Decompressing a non-compressed block means only stripping the 5-byte header.
+Compressed and non-compressed blocks may be intermixed freely
+in a DEFLATE stream.
+The output is the concatenation of
+decompressing all the blocks in order.
+
+It is easiest to understand the construction from the inside out,
+starting with the last file and working backwards to the first.
+Refer to \autoref{fig:quote}.
+Start by inserting the kernel, which will form the end of file data for every file.
+Prepend a local file header $\LFH_N$
+and add a central directory header $\CDH_N$ that points to it.
+Set the ``compressed size'' metadata field in $\LFH_N$ and $\CDH_N$ to the compressed size of the kernel.
+Now, insert before $\LFH_N$ a 5-byte non-compressed block header (colored green in the diagram)
+whose length field is equal to the size of $\LFH_N$.
+For the second time,
+prepend a local file header $\LFH_{N-1}$
+and add a central directory header $\CDH_{N-1}$ that points to it.
+Set the ``compressed size'' metadata field in both headers to the compressed size of the kernel,
+\emph{plus} the size of the non-compressed block header (\SI{5}{bytes}),
+\emph{plus} the size of $\LFH_N$.
 
 \begin{figure*}
 \includegraphics{figures/quote}
 \caption{
-xxx
+Quoted-overlap zip file construction
+(\autoref{sec:quote}).
+Each file contains the local file headers of all the files which follow it,
+as well as the kernel.
+The green parts stand for DEFLATE non-compressed blocks.
 }
 \label{fig:quote}
 \end{figure*}
+
+At this point the zip file contains two files.
+Let's walk through what a zip parser would see while parsing it.
+Supposed the compressed kernel is \SI{1000}{bytes} long
+and the size of $\LFH_N$ is \SI{31}{bytes}.
+We start at $\CDH_{N-1}$
+and follow the pointer to $\LFH_{N-1}$.
+The first file's filename is ``Y'' and
+the compressed size of its file data is \SI{1036}{bytes}.
+Interpreting the following \SI{1036}{bytes} as a DEFLATE stream,
+we first encounter the 5-byte header of a non-compressed block
+that says to copy the next \SI{31}{bytes}.
+We write the next \SI{31}{bytes},
+which happen to be $\LFH_N$,
+as output to the file ``Y''.
+Moving on in the DEFLATE stream, we find a compressed block (the kernel),
+which we decompress to file ``Y''.
+Now we have reached the end of the compressed data and are done with file ``Y''.
+Proceeding to the next file, we follow the pointer from $\CDH_N$
+to $\LFH_N$ and find a file with filename ``Z''
+and compressed size \SI{1000}{bytes}.
+Interpreting those \SI{1000}{bytes} as a DEFLATE stream,
+we immediately encounter a compressed block (the kernel again)
+and decompress it to the file ``Z''.
+Now we have reached the end of the final file and are done.
+The output file ``Z'' contains the decompressed kernel;
+the output file ``Y'' is be the same, except additionally prefixed by
+$\LFH_N$, \SI{31}{bytes} copied literally from the zip file.
+
+The zip file is constructed by repeating the quoting procedure.
+Each new file adds a central directory header,
+a local file header,
+and a non-compressed block to quote the next local file header.
+File data is generally a chain of non-compressed blocks
+(which are quoted local file headers)
+followed by the compressed kernel.
+The output files are nonsense,
+but no one said they had to make sense.
+
+This quoted-overlap construction has better compatibility
+than the full-overlap construction of \autoref{sec:overlap},
+but the compatibility comes at the expense of the compression ratio.
+There, each added file cost only a central directory header;
+but here, it costs a central directory header,
+a local file header,
+and another \SI{5}{bytes} for the quoting header.
 
 
 \section{Optimization}
 \label{sec:optimization}
 
+x
+
 \subsection{Allocation}
 \label{sec:allocation}
 
+x
 
 \section{Zip64}
 \label{sec:zip64}
 
+x
+
+Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
+used overlapping files to achieve
+almost complete replication of the zip file itself.
 
 \begin{table*}
 \centering
