@@ -125,9 +125,37 @@ that come with some loss of compatibility.
 \section{Structure of a zip file}
 \label{sec:zipstructure}
 
-Zip is a container format...
+A~zip file consists of
+a \emph{central directory} which references
+\emph{files}.
+Refer to \autoref{fig:normal}.
 
-hey ho \autoref{fig:normal}
+The central directory is at the end of the zip file.
+It is a list of \emph{central directory headers}.
+Each central directory header contains metadata for a single file,
+like its filename and CRC-32 checksum,
+and a backwards pointer to the file's local file header.
+A~central directory header is 46~bytes long,
+plus the length of the filename.
+
+A~file consists of a \emph{local file header}
+followed by compressed \emph{file data}.
+The local file header is 30~bytes long,
+plus the length of the filename.
+It contains a redundant copy
+of the metadata from the central directory header,
+and the compressed and uncompressed sizes of the file data
+which follows.
+Zip is a container format, not a compression algorithm.
+Each file's data is compressed by itself,
+without reference to any other file,
+using an external compression algorithm---usually DEFLATE~\cite{rfc1951}.
+
+This description of the zip format omits many details that
+are not needed to understand the construction of the zip bomb.
+For full information,
+refer to the file format specification~\cite{appnote},
+particularly Section~4.3.
 
 \begin{figure*}
 \includegraphics{figures/normal}
@@ -138,8 +166,91 @@ The structure of a normal zip file.
 \end{figure*}
 
 
-\section{Overlapping files}
+\section{The first insight: overlapping files}
 \label{sec:overlap}
+
+By compressing a long string of repeated bytes,
+we can produce a \emph{kernel}
+of highly compressed data.
+By itself, the kernel's compression ratio cannot
+exceed the DEFLATE limit of \num{1032},
+so we want a way to reuse the kernel in many files,
+without having to make a separate copy of it in each file.
+We can do it by overlapping files:
+making many central directory headers point to
+a single file whose data is the kernel.
+See \autoref{fig:overlap}.
+
+Let's look at an example to see how this construction affects the compression ratio.
+Suppose the kernel is \num{1000}~bytes and
+decompresses to \SI{1}{\MB}.
+Then the first \SI{1}{\MB} of output ``costs''
+\num{1078} bytes of input:
+\num{31} bytes for a local file header (including a 1-byte filename)</li>
+<li>47 bytes for a central directory header (including a 1-byte filename)</li>
+<li>1000 bytes for the kernel</li>
+</ul>
+<p>
+But each additional <data value="1000000"><abbr title=megabyte>MB</abbr></data> of output
+only costs 47 bytes—we don't need another copy of the local file header or the kernel,
+only an additional central directory header.
+The overall compression ratio is
+$(\num{1000000} N) / (\num{47} N + 30 + 1000) \rightarrow {\sim}\num{21000}$,
+and gets better as the kernel gets bigger.
+
+<p>
+The problem with this idea is that it's not very compatible.
+The file metadata—the filename specifically—doesn't match
+between the central directory header and local file header.
+Some zip parsers only look at the metadata of one header or the other,
+but other parsers look at both and compare.
+<a href="http://infozip.sourceforge.net/UnZip.html">Info-ZIP UnZip</a>
+(the standard Unix <code>unzip</code> program)
+extracts the files, but with warnings:
+</p>
+<figure>
+<pre>
+$ <kbd>unzip overlap.zip</kbd>
+<samp>  inflating: A
+B:  mismatching "local" filename (A),
+         continuing with "central" filename version
+  inflating: B
+<i>...</i></samp>
+</pre>
+</figure>
+<p>
+The Python <a href="https://docs.python.org/3/library/zipfile.html">zipfile</a> module
+% <a href="https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1486-L1489">throws an error</a>
+when filenames don't match:
+</p>
+<figure>
+<pre>
+$ <kbd>python3 -m zipfile -e overlap.zip .</kbd>
+<samp>Traceback (most recent call last):
+<i>...</i>
+% __main__.BadZipFile: File name in directory 'B' and header b'A' differ.</samp>
+</pre>
+</figure>
+<!--
+<p>
+We could make every central directory header have the same filename
+as the local file header, but that too is unsatisfying
+because it means that if extracted to disk,
+all the files will just overwrite each other and not take up more space
+than a single file.
+</p>
+-->
+
+<p>
+If you are targeting a specific zip parser that you know
+does not check for filename consistency,
+this construction is a good one.
+It grows faster (as a function of the input size)
+than the construction of the next section,
+which has better compatibility
+because it uses separate local file headers.
+</p>
+
 
 Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
 used overlapping files to achieve
@@ -288,6 +399,11 @@ xxx
 Compatibility of selected zip parsers with various zip features,
 edge cases,
 and input files.
+For best compatibility,
+use DEFLATE compression without Zip64,
+match names in central directory headers and local file headers,
+compute correct CRCs,
+and avoid the maximum values of 32-bit and 16-bit fields.
 }
 \label{tab:compatibility}
 \end{table*}
@@ -375,8 +491,11 @@ We compare only to the older version.
 % ANON
 % \section*{Acknowledgements}
 
+\section*{Availability}
+
+% TODO: cryptobin
+
 % ANON
-% \section*{Availability}
 % \url{https://www.bamsoftware.com/hacks/zipbomb/}
 
 \bibliographystyle{plain}
