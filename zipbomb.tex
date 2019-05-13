@@ -4,6 +4,7 @@
 \usepackage{graphicx}
 \usepackage{makecell}
 \usepackage{pifont}
+\usepackage{threeparttable}
 \usepackage{xcolor}
 \usepackage[binary-units,number-unit-product=~]{siunitx}
 
@@ -289,6 +290,86 @@ edge cases,
 and input files.
 }
 \label{tab:compatibility}
+\end{table*}
+
+\begin{table*}
+\centering
+\begin{threeparttable}
+\begin{tabular}{rr|rr@{}l|rr@{}l}
+&
+&
+\multicolumn{3}{c|}{\textbf{non-recursive}} &
+\multicolumn{3}{c}{\textbf{recursive}}
+\\
+&
+zipped size &
+unzipped size &
+\multicolumn{2}{r|}{ratio\phantom{~thousand}} &
+unzipped size &
+\multicolumn{2}{r}{ratio\phantom{~thousand}}
+\\
+Cox quine~\cite{cox} &
+\num{440} &
+\num{440} &
+\num{1}&.0 &
+$\infty$ &
+$\infty$&
+\\
+Ellingsen quine~\cite{ellingsen} &
+\num{28809} &
+\num{42569} &
+\num{1}&.5 &
+$\infty$ &
+$\infty$&
+\\
+42.zip~\cite{42.zip} &
+\num{42374}\tnote{*} &
+\num{558432} &
+\num{13}&.2 &
+\num{4507981343026016} &
+106&~billion
+\\
+this technique &
+\num{42374} &
+\num{5461307620} &
+129&~thousand &
+\num{5461307620} &
+129&~thousand
+\\
+this technique &
+\num{9893525} &
+\num{281395456244934} &
+28&~million &
+\num{281395456244934} &
+28&~million
+\\
+this technique (Zip64) &
+\num{45876952} &
+\num{4507981427706459} &
+98&~million &
+\num{4507981427706459} &
+98&~million
+% \\
+% this technique (Zip64) &
+% \num{2961656712} &
+% \num{18446744085437447493} &
+% 6&~billion &
+% \num{18446744085437447493} &
+% 6&~billion
+\end{tabular}
+\caption{
+Comparison of zip bomb constructions.
+}
+\label{tab:comparison}
+\begin{tablenotes}
+\item [*]
+There are two versions of 42.zip,
+an \href{https://web.archive.org/web/20120222083624/http://www.unforgettable.dk/}{older version} of \num{42374} bytes,
+and a \href{https://web.archive.org/web/20120301154142/http://www.unforgettable.dk/}{newer version} of \num{42838} bytes.
+The only difference between them is that the newer version has a password.
+We compare only to the older version.
+\end{tablenotes}
+\end{threeparttable}
 \end{table*}
 
 % ANON
