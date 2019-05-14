@@ -189,7 +189,7 @@ See \autoref{fig:overlap}.
 \begin{figure*}
 \includegraphics{figures/overlap}
 \caption{
-Preliminary, full-overlap zip bomb construction
+Full-overlap zip bomb construction
 (\autoref{sec:overlap}).
 This construction has problems with compatibility,
 because filenames do not agree between the
@@ -208,8 +208,8 @@ Then the first \SI{1}{\MB} of output ``costs''
 \SI{31}{bytes} for a local file header (including a 1-byte filename),
 \SI{47}{bytes} for a central directory header (including a 1-byte filename), and
 \SI{1000}{bytes} for the kernel itself.
-But each \SI{1}{\MB} of output
-after the first costs only \SI{47}{bytes}---we don't need another copy of the local file header or the kernel,
+But every \SI{1}{\MB} of output
+after the first costs only \SI{47}{bytes}---we don't need another local file header or copy of the kernel,
 only an additional central directory header.
 So while the first copy of the kernel has a compression ratio of
 $\num{1000000}/\num{1078}\approx \num{928}$,
@@ -266,7 +266,7 @@ of overlapping files.
 % because it uses separate local file headers.
 
 
-\section{The second insight: quoting\\local file headers}
+\section{The second insight:\\quoting local file headers}
 \label{sec:quote}
 
 We need to somehow separate the local file headers for each file,
@@ -326,7 +326,7 @@ The green parts stand for DEFLATE non-compressed blocks.
 
 At this point the zip file contains two files.
 Let's walk through what a zip parser would see while parsing it.
-Supposed the compressed kernel is \SI{1000}{bytes} long
+Supposed the compressed size of the kernel is \SI{1000}{bytes}
 and the size of $\LFH_N$ is \SI{31}{bytes}.
 We start at $\CDH_{N-1}$
 and follow the pointer to $\LFH_{N-1}$.
@@ -356,10 +356,17 @@ The zip file is constructed by repeating the quoting procedure.
 Each new file adds a central directory header,
 a local file header,
 and a non-compressed block to quote the next local file header.
-File data is generally a chain of non-compressed blocks
-(which are quoted local file headers)
+Compressed file data is generally a chain of DEFLATE non-compressed blocks
+(the quoted local file headers)
 followed by the compressed kernel.
-The output files are nonsense,
+Each byte in the kernel contributes about
+$\num{1032}N$ to the output size,
+because it is part of all $N$ files.
+The output files are not all the same size:
+those that appear earlier in the zip file
+are larger than those that appear later,
+because they contain more local file headers.
+The contents of the output files are nonsense,
 but no one said they had to make sense.
 
 This quoted-overlap construction has better compatibility
@@ -374,7 +381,127 @@ and another \SI{5}{bytes} for the quoting header.
 \section{Optimization}
 \label{sec:optimization}
 
-x
+Now that we have the basic zip bomb construction,
+we will try to make it as efficient as possible.
+We want to answer two questions:
+
+\begin{itemize}
+\item For a given zip file size, what's the maximum compression ratio?
+\item What's the maximum compression ratio, given the limits of the zip format?
+\end{itemize}
+
+\subsection{Filenames}
+\label{sec:filenames}
+
+For our purposes, filenames are mostly dead weight.
+While filenames do contribute something to the output size
+by virtue of being part of quoted local file headers,
+a byte in a filename does not contribute nearly as much to the output size
+as does a byte in the kernel.
+So we want filenames to be as short as possible,
+while keeping them all distinct,
+and subject to compatibility considerations.
+
+The first compatibility consideration is filename encoding.
+The zip format specification states that filenames
+are to be interpreted as CP~437,
+or \mbox{UTF-8} if a certain flag bit is set~\cite[Appendix~D]{appnote}.
+But this is a major point of incompatibility
+between zip parsers,
+which may interpret filenames as being in
+some fixed or locale-specific encoding, or ignore the \mbox{UTF-8} bit, for example.
+So for compatibility, it's best to stick to characters
+that have the same encoding in both
+CP~437 and \mbox{UTF-8},
+namely, the \num{95} printable characters of \mbox{US-ASCII}.
+% https://bugs.python.org/issue10614
+% https://bugs.python.org/issue10972
+
+Another compatibility consideration is filesystem restrictions.
+Some filesystems are case-insensitive, so ``a'' and ``A'' do not count as distinct names.
+Common filesystems like FAT32 prohibit certain characters like
+`*' and `?'~\cite[\S Limits]{wiki-fs}.
+
+As a safe compromise between all these considerations,
+our zip bomb will use filenames consisting of characters
+drawn from a 36-character alphabet
+that does not
+rely on case distinctions
+or use special characters:
+
+\begin{center}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{cccccccccccccccccc}
+0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & A & B & C & D & E & F & G & H \\
+I & J & K & L & M & N & O & P & Q & R & S & T & U & V & W & X & Y & Z
+\end{tabular}
+\end{center}
+\noindent
+
+Filenames are generated in the obvious way,
+cycling each position through the possible characters
+and adding a position on overflow:
+
+\begin{center}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{rrrrrrrrr}
+``\mbox{0}'', &
+``\mbox{1}'', &
+``\mbox{2}'', &
+\ldots, &
+``\mbox{Z}'',
+\\
+``\mbox{00}'', &
+``\mbox{01}'', &
+``\mbox{02}'', &
+\ldots, &
+``\mbox{0Z}'', &
+``\mbox{10}'', &
+``\mbox{11}'', &
+\ldots, &
+``\mbox{ZZ}'',
+\\
+``\mbox{000}'', &
+``\mbox{001}'', &
+``\mbox{002}'', &
+\ldots,
+\end{tabular}
+\end{center}
+\noindent
+
+Using this scheme, four character positions are enough for
+\num{1727604} filenames.
+
+% The length of the $n$\/th filename is
+% $\lfloor \log_{36}((n + 1) / \frac{36}{35})\rfloor + 1$.
+% The sum of the lengths of the first $n$ filenames is
+% $dn - ((36^d - 1) \frac{36}{35^2} - \frac{d}{35})$,
+% where $d = \lfloor \log_{36}(n / \frac{36}{35})\rfloor$.
+% https://oeis.org/A014824
+
+Given that the $N$ filenames in the zip file
+are generally not all of the same length,
+how should we order them,
+shortest to longest or longest to shortest?
+A little reflection shows that it is better to
+put the longest names last, because those names are the most quoted.
+Ordering filenames longest last
+adds over \SI{900}{\MB} of output
+in the ``large'' zip bomb we will see in \autoref{sec:allocation},
+compared to ordering them longest first.
+It is only a minor optimization, though,
+as those \SI{900}{\MB} comprise only \num{0.0003}\%
+of the total output size.
+
+% $ unzip -l zblg.zip | tail -n 1
+% 281395456244934                     65534 files
+% $ unzip -l zblg.rev.zip | tail -n 1
+% 281394526372494                     65534 files
+% $ python
+% >>> 281395456244934 - 281394526372494
+% 929872440
+% >>> 929872440 / 281395456244934. * 100
+% 0.00033045041039703735
 
 \subsection{Allocation}
 \label{sec:allocation}
@@ -452,16 +579,18 @@ almost complete replication of the zip file itself.
 \yes &
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1311-L1313}{\yes} &
 \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L406-L414}{\yes} &
-\href{https://github.com/thejoshwolfe/yauzl/blob/2.10.0/index.js#L333-L348}{\no} &
+% ANON
+\no & % \href{https://github.com/thejoshwolfe/yauzl/issues/109}{\no} &
 \href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L59}{\yes} &
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive_common.h#95}{\yes} &
 \href{https://github.com/madler/sunzip/blob/master/sunzip.c#L1275-L1277}{\yes}
 \\
 \thead[r]{permits file count of $2^{16}-1$} &
 \yes &
-\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L893-L894}{\yes} &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L258-L259}{\yes} &
 \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L502-L511}{\yes} &
-\href{https://github.com/thejoshwolfe/yauzl/issues/108}{\no} &
+% ANON
+\no & % \href{https://github.com/thejoshwolfe/yauzl/issues/108}{\no} &
 \href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L79}{\yes} &
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive_common.h#51}{\yes} &
 \href{https://github.com/madler/sunzip/blob/master/sunzip.c#L1139}{\yes}
@@ -485,7 +614,7 @@ almost complete replication of the zip file itself.
 \yes &
 \no
 \\
-\thead[r]{parses Zip64 quoted overlap\\(\autoref{sec:zip64})} &
+\thead[r]{parses quoted overlap Zip64\\(\autoref{sec:zip64})} &
 \yes &
 \yes &
 \yes &
@@ -497,7 +626,7 @@ almost complete replication of the zip file itself.
 \caption{
 Compatibility of selected zip parsers with various zip features,
 edge cases,
-and input files.
+and zip bomb constructions.
 For best compatibility,
 use DEFLATE compression without Zip64,
 match names in central directory headers and local file headers,
@@ -582,7 +711,7 @@ There are two versions of 42.zip,
 an \href{https://web.archive.org/web/20120222083624/http://www.unforgettable.dk/}{older version} of \num{42374} bytes,
 and a \href{https://web.archive.org/web/20120301154142/http://www.unforgettable.dk/}{newer version} of \num{42838} bytes.
 The only difference between them is that the newer version has a password.
-We compare only to the older version.
+We use only the older version.
 \end{tablenotes}
 \end{threeparttable}
 \end{table*}
