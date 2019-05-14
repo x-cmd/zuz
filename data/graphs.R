@@ -31,7 +31,7 @@ p <- p + scale_y_continuous(limits=c(ymin, ymax))
 p <- p + scale_color_manual(values=c(bulk_deflate="black", zopfli="slateblue", zlib="dodgerblue"))
 p <- p + labs(x="size of DEFLATE stream", y="maximum uncompressed size")
 p <- p + theme_minimal()
-p <- p + theme(legend.position="none")
+p <- p + theme(text=element_text(size=10, family="Times"), legend.position="none")
 
 # We need to figure out the aspect ratio of just the panel, in order to compute
 # the rotation angle for the labels.
@@ -48,8 +48,8 @@ panel.height <- output.height - convertWidth(sum(g$heights), "in", valueOnly=TRU
 
 # The slope of the lines in data space is 1032/1.
 angle <- atan2(1032*panel.height/(ymax-ymin), 1*panel.width/(xmax-xmin)) * (180/pi)
-p <- p + annotate("text", x=21085, y=data.max[engine == "bulk_deflate" & compressed_size==21085]$max_uncompressed_size, label="bulk_deflate", angle=angle, hjust=0, vjust=-0.6)
-p <- p + annotate("text", x=21085, y=data.max[engine == "zopfli" & compressed_size==21085]$max_uncompressed_size, label="Zopfli", angle=angle, hjust=0, vjust=-0.6)
-p <- p + annotate("text", x=21085, y=data.max[engine == "zlib" & compressed_size==21085]$max_uncompressed_size, label="zlib and Info-ZIP", angle=angle, hjust=0, vjust=-0.6)
+p <- p + annotate("text", x=21085, y=data.max[engine == "bulk_deflate" & compressed_size==21085]$max_uncompressed_size, label="bulk_deflate", angle=angle, hjust=0, vjust=-0.6, family="Times")
+p <- p + annotate("text", x=21085, y=data.max[engine == "zopfli" & compressed_size==21085]$max_uncompressed_size, label="Zopfli", angle=angle, hjust=0, vjust=-0.6, family="Times")
+p <- p + annotate("text", x=21085, y=data.max[engine == "zlib" & compressed_size==21085]$max_uncompressed_size, label="zlib and Info-ZIP", angle=angle, hjust=0, vjust=-0.6, family="Times")
 
 ggsave("max_uncompressed_size.pdf", p, width=output.width, height=output.height, device=cairo_pdf)
