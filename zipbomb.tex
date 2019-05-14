@@ -39,6 +39,7 @@
 \newcommand{\C}{\mathrm{C}}
 \newcommand{\OPT}{\mathrm{OPT}}
 \newcommand{\bulkdeflate}{\mbox{bulk\_deflate}}
+\newcommand{\CRC}{\mbox{CRC-32}}
 
 \newcommand{\yes}{\cellcolor{YellowGreen}\checkmark}
 \newcommand{\no}{\cellcolor{Bittersweet}\ding{55}}
@@ -142,7 +143,7 @@ Refer to \autoref{fig:normal}.
 The central directory is at the end of the zip file.
 It is a list of \emph{central directory headers}.
 Each central directory header contains metadata for a single file,
-like its filename and CRC-32 checksum,
+like its filename and \CRC\ checksum,
 and a backwards pointer to the file's local file header.
 A~central directory header is 46~bytes long,
 plus the length of the filename.
@@ -496,7 +497,7 @@ and adding a position on overflow:
 
 \begin{center}
 \setlength{\tabcolsep}{2pt}
-\begin{tabular}{rrrrrrrrr}
+\begin{tabular}{rrrrrl}
 ``\mbox{0}'', &
 ``\mbox{1}'', &
 ``\mbox{2}'', &
@@ -507,16 +508,20 @@ and adding a position on overflow:
 ``\mbox{01}'', &
 ``\mbox{02}'', &
 \ldots, &
-``\mbox{0Z}'', &
-``\mbox{10}'', &
-``\mbox{11}'', &
+``\mbox{0Z}'',
+\\
+\ldots,
+\\
+``\mbox{Z0}'', &
+``\mbox{Z1}'', &
+``\mbox{Z2}'', &
 \ldots, &
 ``\mbox{ZZ}'',
 \\
 ``\mbox{000}'', &
 ``\mbox{001}'', &
 ``\mbox{002}'', &
-\ldots,
+\ldots
 \end{tabular}
 \end{center}
 
@@ -602,9 +607,7 @@ between the kernel and the file headers.
 It is not a coincidence.
 Let's look at a simplified model of the quoted-overlap construction.
 In the simplified model,
-we will assume that the compression ratio of the kernel
-is exactly \num{1032},
-and ignore filenames
+we ignore filenames,
 as well as the slight increase in output file size
 due to quoting local file headers.
 Analysis of the simplified model will show that the optimum
@@ -617,10 +620,10 @@ Define some constants and variables:
 \begin{align*}
 X & & & \mbox{zip file size (take as fixed)} \\
 N & & & \mbox{number of files in the zip file} \\
-\CDH &=   \num{46} & & \mbox{size of a central directory header} \\
-\LFH &=   \num{30} & & \mbox{size of a local file header} \\
-\Q   &=    \num{5} & & \mbox{size of a quoting block header} \\
-\C   &= \num{1032} & & \mbox{compression ratio of the kernel}
+\CDH &= \num{46} & & \mbox{size of a central directory header} \\
+\LFH &= \num{30} & & \mbox{size of a local file header} \\
+\Q   &=  \num{5} & & \mbox{size of a quoting block header} \\
+\C   &\approx \num{1032} & & \mbox{compression ratio of the kernel}
 \end{align*}
 
 % JACAL session to do the algebra and calculus:
@@ -730,6 +733,41 @@ in the input size.
 S_X(N_\OPT) &= \frac{(X + \Q)^2 \, \C}{4(\CDH + \LFH + \Q)}
 \end{align}
 
+\begin{quote}
+\sl
+Note to reviewers:
+we would appreciate advice
+on adapting the simplified model
+so that $S_X(N_\OPT)$ is
+an actual lower bound on the zip bomb's growth.
+The problem with the analysis above is that while it slightly underestimates
+the output size by ignoring the contribution of quoted local file headers,
+it also overestimates the size of the kernel
+by giving the kernel the bytes that would be required to store filenames.
+To be precise, $H(N)$ needs an additional term
+that upper-bounds the space required for $N$ filenames.
+The bounds we tried led to messy and unenlightening formulas.
+If it helps, the length of the $n$\/th filename is
+$\lfloor \log_{36}((n + 1) / \frac{36}{35})\rfloor + 1 =
+\lfloor \log_{36}(n + 1) + \log_{36}(35)\rfloor = O(\log n)$.
+If we let $d$ be the length of the longest filename,
+the sum of the lengths of the first $n$ filenames is
+$d\cdot(n+1) - ((36^d - 1) \frac{36}{35^2} - \frac{d}{35}) = O(n\log n)$.
+This comes from the observation that all filenames have length $\ge 1$,
+all but $36$ have length $\ge 2$,
+all but $36+36^2$ have length $\ge 3$, and in general
+all but $36+36^2+\cdots+36^{i-1} = \frac{36^i-1}{35}-1$ have length $\ge i$,
+for $1 \le i \le d$.
+Therefore the sum of lengths is \\
+$\phantom{=}\sum_{i=1}^d n - (\frac{36^i-1}{35}-1) \\
+= d\cdot(n+1) - \sum_{i=1}^d \frac{36^i-1}{35} \\
+= d\cdot(n+1) - ((36^d - 1)\frac{36}{35^2} - \frac{d}{35})$,\\
+where the last equality comes from adapting a formula found in
+\url{https://oeis.org/A014824}.
+See the comment on \texttt{sum\_filename\_lengths}
+in \mbox{optimize.R} in the source code.
+\end{quote}
+
 As we make the zip file larger and larger,
 eventually we run into the limits of the zip format.
 A~zip file can contain at most $2^{16}-1$ files
@@ -796,8 +834,280 @@ not increasing the output size.
 % 99.97480055840765
 
 
-\section{Efficient CRC-32 computation}
+\section{Efficient \CRC\ computation}
 \label{sec:crc32}
+
+The metadata in the central directory header and local file header
+includes a \CRC\ checksum
+of the uncompressed data.
+This poses a problem, because if we calculate the \CRC\ of each file directly,
+we will end up doing work proportional to the total <em>unzipped</em> size,
+which is large by design (it's a zip bomb, after all).
+We would really prefer to only do work proportional to the <em>zipped</em> size—a
+fast way to compute checksums doesn't help the compression ratio,
+but it is necessary to make generating the zip bomb practical.
+We can do it by exploiting the fact that all the files in the zip file
+share a common suffix (the uncompressed kernel)
+and using properties of \CRC\ to combine computations without redoing work.
+The technique is a slight generalization of the
+\texttt{crc32\_combine}
+function~\cite{crc32combine} in zlib.
+
+You can model \CRC\ as a state machine that updates a 32-bit state register
+for each incoming bit.
+The basic update operations for a 0 bit and a 1 bit are:
+\begin{verbatim}
+uint32 crc32_update_0(uint32 state) {
+	if (state &amp; 1 == 0) {
+		// Shift out the least significant bit.
+		state = state &gt;&gt; 1;
+	} else {
+		// Shift out the least significant bit, then XOR with the CRC-32 constant.
+		state = (state &gt;&gt; 1) ^ 0xedb88320;
+	}
+	return state;
+}
+
+uint32 crc32_update_1(uint32 state) {
+	// Flip the least significant bit, then proceed as for a 0 bit.
+	return crc32_update_0(state ^ 1);
+}
+\end{verbatim}
+
+The only difference in the case of a 1 bit is that we flip the least significant bit
+of the state register before proceeding.
+After that, we shift out the least significant bit of the state register,
+and if it was a 1, XOR the state with a 32-bit constant
+representing the \CRC\ polynomial.
+
+We can rewrite these operations in a way
+that makes it clearer that the \CRC\ update functions
+can be expressed as matrix multiplications:
+\begin{verbatim}
+uint32 crc32_update_0(uint32 state) {
+	uint32_t new_state = 0;
+	for (unsigned int n = 31; n &gt;= 1; n--) {
+		// Right-shift the bit at position n into position (n-1).
+		new_state ^= ((state&gt;&gt;n) &amp; 1) * (1&lt;&lt;(n-1));
+	}
+	// If the 0th bit was set, XOR with the CRC-32 constant.
+	new_state ^= ((state&gt;&gt;0) &amp; 1) * 0xedb88320;
+	return new_state;
+}
+
+uint32 crc32_update_1(uint32 state) {
+	// Do as for a 0 bit, then XOR with the CRC-32 constant.
+	return crc32_update_0(state) ^ 0xedb88320;
+}
+\end{verbatim}
+
+<p>
+If we think of the state register as a being 32-element binary vector,
+and XOR as representing addition,
+then \texttt{crc32\_update\_0} is the sum
+of multiplying each bit in the state vector with another vector.
+In other words, \texttt{crc32\_update\_0} is a
+linear transformation
+that can be represented as multiplication by a $32\times 32$ binary
+transformation matrix.
+The columns of the transformation matrix are the vectors with
+which each bit of the state vector is multiplied.
+</p>
+
+<p>
+Furthermore, \texttt{crc32\_update\_1} is just the output of
+\texttt{crc32\_update\_0} plus a constant
+(with XOR representing addition).
+That means \texttt{crc32\_update\_1} is an
+affine transformation:
+a matrix multiplication followed by an addition (translation).
+We can represent an affine transformation as a single
+transformation matrix (no separate translation)
+if we enlarge the matrix dimensions to $33\times 33$
+and add an extra element to the state vector which is always 1.
+This representation is called
+homogeneous coordinates.
+After applying the transformation,
+we simply strip the extra coordinate to recover the 32-bit state.
+</p>
+
+<caption><var>M</var><sub>0</sub>, the $33\times 33$ affine transformation matrix for \CRC\ of a 0 bit.</caption>
+\[
+\setcounter{MaxMatrixCols}{33}
+\begin{smallmatrix}
+0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1
+\end{smallmatrix}
+\]
+
+<caption><var>M</var><sub>1</sub>, the $33\times 33$ affine transformation matrix for \CRC\ of a 1 bit.</caption>
+\[
+\setcounter{MaxMatrixCols}{33}
+\begin{smallmatrix}
+0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1 \\
+0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1 \\
+1&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1 \\
+0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&0&1 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&0&1 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0&1 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&0&1 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0&1 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&0&1 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0&1 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&0&0 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&0&1 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1&1 \\
+1&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1 \\
+0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&0&1
+\end{smallmatrix}
+\]
+
+<p>
+So both operations \texttt{crc32\_update\_0} and \texttt{crc32\_update\_1}
+can be represented by a $33\times 33$ transformation matrix.
+The two matrices <var>M</var><sub>0</sub> and <var>M</var><sub>1</sub> are shown.
+Column vectors are stored with the most significant bit at the bottom:
+reading the first column from bottom to top, you see
+the \CRC\ constant 0xedb88320 = 11101101101110001000001100100000<sub>2</sub>.
+The two matrices differ only in the last column, which represents the amount of translation:
+in <var>M</var><sub>0</sub> it is zero and
+in <var>M</var><sub>1</sub> it is 0xedb88320, the \CRC\ polynomial constant.
+The 1's just above the diagonal represent the
+\texttt{state~>>~1} operation.
+
+<p>
+The benefit of representing \CRC\ as matrices is that matrices compose.
+Suppose we want to represent the static change caused by processing
+the ASCII character <code>a</code>, whose binary representation is
+01100001<sub>2</sub>.
+We can represent the state change of those 8 bits in a single transformation matrix:
+</p>
+<figure>
+<table class=eqnarray>
+<tr>
+% <td><var>M</var><sub><code>a</code></sub></td><td> = <var>M</var><sub>0</sub> × <var>M</var><sub>1</sub> × <var>M</var><sub>1</sub> × <var>M</var><sub>0</sub> × <var>M</var><sub>0</sub> × <var>M</var><sub>0</sub> × <var>M</var><sub>0</sub> × <var>M</var><sub>1</sub></td>
+</tr>
+</table>
+</figure>
+<p>
+Now we can compute the state change of a repeated string of <code>a</code>
+my multiplying many copies of <var>M</var><sub><code>a</code></sub> together—matrix exponentiation.
+There's an efficient way to do matrix exponentiation
+called the square-and-multiply algorithm,
+which allows us to compute <var>M</var><sup><var>n</var></sup>
+in only about log<sub>2</sub> <var>n</var> steps.
+For example, to represent the \CRC\ state change from processing a
+string of 9 <code>a</code>'s:
+</p>
+<figure>
+<table class=eqnarray>
+<tr>
+% <td>(<var>M</var><sub><code>a</code></sub>)<sup>9</sup></td><td> = <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub></td>
+</tr>
+<tr>
+% <td></td><td> = (<var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub>)<sup>2</sup> × <var>M</var><sub><code>a</code></sub></td>
+</tr>
+<tr>
+% <td></td><td> = ((<var>M</var><sub><code>a</code></sub> × <var>M</var><sub><code>a</code></sub>)<sup>2</sup>)<sup>2</sup> × <var>M</var><sub><code>a</code></sub></td>
+</tr>
+<tr>
+% <td></td><td> = (((<var>M</var><sub><code>a</code></sub>)<sup>2</sup>)<sup>2</sup>)<sup>2</sup> × <var>M</var><sub><code>a</code></sub></td>
+</tr>
+</table>
+</figure>
+
+<p>
+There's one more minor complication in \CRC\ computation.
+The state register is not initialized to 0, but to 0xffffffff (preconditioning)
+And at the end of the input, the state register is XORed with 0xffffffff
+before being returned (postconditioning).
+We'll model this as additional steps to do before and after
+the matrix multiplication.
+Similarly we'll take care of adding and removing the extra element
+for homogeneous coordinates and wrap it all up in an \texttt{apply\_matrix}
+operation:
+</p>
+<figure>
+<table class=eqnarray>
+<tr>
+% <td><code>apply_matrix</code>(<var>M</var>, <var><b>v</b></var>)</td><td> = ((<var>M</var> × ((<var><b>v</b></var> ^ 0xffffffff) | (1&lt;&lt;32))) &amp; 0xffffffff) ^ 0xffffffff</td>
+</tr>
+</table>
+</figure>
+
+<p>
+Now we are ready to compute the \CRC\ checksums for the files in the zip file.
+Use the square-and-multiply method we can compute <var>M</var><sub>kernel</sub>,
+the \CRC\ matrix for the kernel, which is a long stream of repeated bytes.
+Initialize <var>M</var> := <var>M</var><sub>kernel</sub>.
+Now \texttt{apply\_matrix}(<var>M</var>, 0)
+yields the checksum for the kernel,
+which is also the checksum of the final file, file <var>N</var>.
+Store this checksum in CDH<sub><var>N</var></sub> and LFH<sub><var>N</var></sub>,
+the central directory header and local file header of file <var>N</var>.
+Now we work backwards.
+Compute <var>M</var><sub>LFH<sub><var>N-1</var></sub></sub>,
+the matrix for the bytes of the local file header of file <var>N - 1</var>.
+% Now update <var>M</var> := <var>M</var> × <var>M</var><sub>LFH<sub><var>N-1</var></sub></sub>;
+this has the effect of adding a prefix of LFH<sub><var>N-1</var></sub>
+to the \CRC\ change represented by <var>M</var>.
+Now \texttt{apply\_matrix}(<var>M</var>, 0)
+yields the checksum for file <var>N - 1</var>,
+to be stored in
+CDH<sub><var>N-1</var></sub> and LFH<sub><var>N-1</var></sub>.
+Repeat this process, accumulating prefixes into <var>M</var>,
+until you have processed all the files.
+</p>
+
 
 
 \section{Extension: Zip64}
@@ -860,7 +1170,7 @@ almost complete replication of the zip file itself.
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#594}{\no} &
 \href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1268-L1269}{\yes}
 \\
-\thead[r]{tolerates incorrect CRC-32} &
+\thead[r]{tolerates incorrect \CRC} &
 \maybe{warns} &
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L893-L894}{\no} &
 \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L219-L224}{\maybe{if zero}} &
