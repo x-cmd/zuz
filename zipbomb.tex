@@ -808,7 +808,7 @@ to make room for the maximum file size
 that gets slightly larger with each added file.
 
 This plan results in a zip file
-containing $2^{16}-2$ files and a kernel that decompresses
+that contains $2^{16}-2$ files and a kernel that decompresses
 to $2^{32}-\num{2178825}$ bytes.
 See the row marked ``large'' in \autoref{tab:comparison}.
 The largest file (the first file) uncompresses to
@@ -818,8 +818,7 @@ the final \SI{54}{bytes} would require more bytes
 than they are worth.
 The output size of this zip bomb, \SI{281395456244934}{bytes},
 is 99.97\% of the theoretical maximum
-$(2^{32}-1)\cdot(2^{16}-1)$
-supported by the zip format.
+$(2^{32}-1)\cdot(2^{16}-1)$.
 % 65 535 × 0xffffffff = <data value="281470681677825">281 470 681 677 825</data>.
 Any major improvements to the compression ratio can only come
 from reducing the input size,
