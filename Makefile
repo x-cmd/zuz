@@ -4,7 +4,8 @@ BIBTEX = bibtex
 # -nosafe needed for opacity: https://tex.stackexchange.com/a/473911
 ASYMPOTE = asy -nosafe
 
-FIGURES = figures/normal.pdf figures/overlap.pdf figures/quote.pdf
+FIGURES = figures/normal.pdf figures/overlap.pdf figures/quote.pdf \
+	data/max_uncompressed_size.pdf
 
 zipbomb.pdf: zipbomb.tex zipbomb.bib $(FIGURES)
 
@@ -17,6 +18,9 @@ zipbomb.pdf: zipbomb.tex zipbomb.bib $(FIGURES)
 
 figures/%.pdf: figures/%.asy figures/common.asy
 	$(ASYMPOTE) -f pdf -cd "$(dir $<)" "$(notdir $<)"
+
+data/%.pdf: data/graphs.R
+	cd "$(dir $<)" && Rscript "$(notdir $<)"
 
 .PHONY: clean
 clean:

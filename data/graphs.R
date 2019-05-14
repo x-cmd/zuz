@@ -2,8 +2,6 @@ library(data.table)
 library(ggplot2)
 library(grid)
 
-output_filename <- commandArgs(trailingOnly=TRUE)[[1]]
-
 data <- fread("compressed_size.csv")
 data.max <- data[, .(max_uncompressed_size=max(uncompressed_size)), .(engine, compressed_size)]
 
@@ -38,20 +36,20 @@ p <- p + theme(legend.position="none")
 # We need to figure out the aspect ratio of just the panel, in order to compute
 # the rotation angle for the labels.
 # https://stackoverflow.com/questions/16422847/save-plot-with-a-given-aspect-ratio
-output.width <- 4
-output.height <- 4
+output.width <- (7.0 - 0.33) / 2
+output.height <- 3
 # Workaround to prevent ggplot_build from creating an empty Rplots.pdf file.
 # https://github.com/tidyverse/ggplot2/issues/809
 # https://github.com/tidyverse/ggplot2/issues/1042
-pdf(file="/dev/null")
+cairo_pdf(filename="/dev/null")
 g <- ggplot_gtable(ggplot_build(p))
 panel.width <- output.width - convertWidth(sum(g$widths), "in", valueOnly=TRUE)
 panel.height <- output.height - convertWidth(sum(g$heights), "in", valueOnly=TRUE)
 
 # The slope of the lines in data space is 1032/1.
 angle <- atan2(1032*panel.height/(ymax-ymin), 1*panel.width/(xmax-xmin)) * (180/pi)
-p <- p + annotate("text", x=21085, y=data.max[engine == "bulk_deflate" & compressed_size==21085]$max_uncompressed_size, label="bulk_deflate", angle=angle, hjust=0, vjust=-1)
-p <- p + annotate("text", x=21085, y=data.max[engine == "zopfli" & compressed_size==21085]$max_uncompressed_size, label="zopfli", angle=angle, hjust=0, vjust=-1)
-p <- p + annotate("text", x=21085, y=data.max[engine == "zlib" & compressed_size==21085]$max_uncompressed_size, label="zlib and Info-ZIP", angle=angle, hjust=0, vjust=-1)
+p <- p + annotate("text", x=21085, y=data.max[engine == "bulk_deflate" & compressed_size==21085]$max_uncompressed_size, label="bulk_deflate", angle=angle, hjust=0, vjust=-0.6)
+p <- p + annotate("text", x=21085, y=data.max[engine == "zopfli" & compressed_size==21085]$max_uncompressed_size, label="Zopfli", angle=angle, hjust=0, vjust=-0.6)
+p <- p + annotate("text", x=21085, y=data.max[engine == "zlib" & compressed_size==21085]$max_uncompressed_size, label="zlib and Info-ZIP", angle=angle, hjust=0, vjust=-0.6)
 
-ggsave(output_filename, p, width=4, height=4, dpi=300)
+ggsave("max_uncompressed_size.pdf", p, width=output.width, height=output.height, device=cairo_pdf)

@@ -34,6 +34,7 @@
 
 \newcommand{\CDH}{\mbox{CDH}}
 \newcommand{\LFH}{\mbox{LFH}}
+\newcommand{\bulkdeflate}{\mbox{bulk\_deflate}}
 
 \newcommand{\yes}{\cellcolor{YellowGreen}\checkmark}
 \newcommand{\no}{\cellcolor{Bittersweet}\ding{55}}
@@ -390,6 +391,52 @@ We want to answer two questions:
 \item What's the maximum compression ratio, given the limits of the zip format?
 \end{itemize}
 
+\subsection{Kernel compression}
+\label{sec:bulkdeflate}
+
+It is worthwhile to compress the kernel as densely as possible,
+because every decompressed byte gets magnified by a factor of $N$.
+To that end, we use a custom DEFLATE compressor
+called \bulkdeflate,
+specialized for compressing
+a string of repeated bytes.
+
+%          engine compressed_size max_uncompressed_size
+% 1: bulk_deflate           21090              21749401
+% 2:         zlib           21090              21723602
+% 3:       zopfli           21090              21734018
+
+All decent DEFLATE compressors will approach a compression ratio of \num{1032}
+when given an infinite stream of repeating bytes,
+but we care more about specific finite sizes
+than asymptotics.
+\autoref{fig:max-uncompressed-size} shows the
+maximum amount of output
+that can result from uncompressing a DEFLATE stream of a given size,
+for \bulkdeflate\ and other implementations.
+\bulkdeflate\ compresses more data
+into the same space than the general-purpose compressors:
+about \SI{26}{\kB} more than zlib and Info-ZIP,
+and about \SI{15}{\kB} more than Zopfli~\cite{zopfli},
+a compressor that trades compression speed for density.
+
+\begin{figure}
+\includegraphics{data/max_uncompressed_size}
+\caption{
+Comparison of DEFLATE compressors
+on a string of repeated bytes.
+}
+\label{fig:max-uncompressed-size}
+\end{figure}
+
+The price of \bulkdeflate's high compression ratio is a lack of generality.
+\bulkdeflate\ can only compress strings of a single repeate byte,
+and only those of specific lengths,
+namely $517 + 258 k$ for integer $k \ge 0$.
+Besides compressing densely, \bulkdeflate\ is fast,
+doing essentially constant work regardless of the input size
+(aside from the $O(n)$ work of actually writing out the compressed string).
+
 \subsection{Filenames}
 \label{sec:filenames}
 
@@ -416,6 +463,7 @@ CP~437 and \mbox{UTF-8},
 namely, the \num{95} printable characters of \mbox{US-ASCII}.
 % https://bugs.python.org/issue10614
 % https://bugs.python.org/issue10972
+% https://github.com/thejoshwolfe/yauzl/issues/84
 
 Another compatibility consideration is filesystem restrictions.
 Some filesystems are case-insensitive, so ``a'' and ``A'' do not count as distinct names.
@@ -436,8 +484,8 @@ or use special characters:
 I & J & K & L & M & N & O & P & Q & R & S & T & U & V & W & X & Y & Z
 \end{tabular}
 \end{center}
-\noindent
 
+\noindent
 Filenames are generated in the obvious way,
 cycling each position through the possible characters
 and adding a position on overflow:
@@ -467,8 +515,10 @@ and adding a position on overflow:
 \ldots,
 \end{tabular}
 \end{center}
-\noindent
 
+\noindent
+There are $36$ filenames of length~\num{1},
+$36^2$ filenames of length~\num{2}, and so on.
 Using this scheme, four character positions are enough for
 \num{1727604} filenames.
 
@@ -503,7 +553,7 @@ of the total output size.
 % >>> 929872440 / 281395456244934. * 100
 % 0.00033045041039703735
 
-\subsection{Allocation}
+\subsection{Kernel size}
 \label{sec:allocation}
 
 x
