@@ -124,7 +124,7 @@ angle_label_at <- function(at, df, angle, label, vjust) {
 p <- p + angle_label_at(10^6.5, data[class=="none_deflate_zip64"], label="DEFLATE", angle=45, -0.5)
 p <- p + angle_label_at(4000, data[class=="none_bzip2_zip64"], label="bzip2", angle=45, -0.5)
 p <- p + angle_label_at(2000, data[class=="quoted_deflate"], label="quoted DEFLATE", angle=atan2(2, 1)*180/pi, -0.5)
-p <- p + angle_label_at(10000000, data[class=="quoted_deflate_zip64"], label="quoted DEFLATE (Zip64)", angle=atan2(2, 1)*180/pi, -0.5)
+p <- p + angle_label_at(20000000, data[class=="quoted_deflate_zip64"], label="quoted DEFLATE (Zip64)", angle=atan2(2, 1)*180/pi, -0.5)
 
 points <- data.frame(
 	x=c(42374*10^1.5, 9893524*10^-1.5, 45876952*10^0.5, 42374*10^0.6, 42374),
