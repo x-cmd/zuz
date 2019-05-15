@@ -131,6 +131,18 @@ We will remark on ways to increase the efficiency of the zip bomb
 that come with some loss of compatibility.
 \end{itemize}
 
+The construction we will develop is tunable for different output sizes.
+For the sake of comparison and discussion,
+we will produce three concrete examples:
+
+\begin{center}
+\begin{tabular}{lr@{~}l@{${} \rightarrow {}$}r@{~}ll}
+zbsm.zip & \num{42} & kB & \num{5.5}   & GB & \autoref{sec:allocation} \\
+zblg.zip & \num{10} & MB & \num{281.4} & TB & \autoref{sec:allocation} \\
+zbxl.zip & \num{46} & MB & \num{4.5}   & PB & \autoref{sec:zip64}
+\end{tabular}
+\end{center}
+
 
 \section{Structure of a zip file}
 \label{sec:zipstructure}
@@ -367,28 +379,28 @@ $\infty$&
 \num{4507981343026016} &
 106&~billion
 \\
-this technique (small) &
+zbsm.zip &
 \num{42374} &
 \num{5461307620} &
 129&~thousand &
 \num{5461307620} &
 129&~thousand
 \\
-this technique (large) &
+zblg.zip &
 \num{9893525} &
 \num{281395456244934} &
 28&~million &
 \num{281395456244934} &
 28&~million
 \\
-this technique (Zip64) &
+(Zip64) zbxl.zip &
 \num{45876952} &
 \num{4507981427706459} &
 98&~million &
 \num{4507981427706459} &
 98&~million
 % \\
-% this technique (Zip64) &
+% zbxxl.zip &
 % \num{2961656712} &
 % \num{18446744085437447493} &
 % 6&~billion &
@@ -503,7 +515,7 @@ for \bulkdeflate\ and other implementations.
 into the same space than the general-purpose compressors:
 about \SI{26}{\kB} more than zlib and Info-ZIP,
 and about \SI{15}{\kB} more than Zopfli~\cite{zopfli},
-a compressor that trades compression speed for density.
+a compressor that trades speed for density.
 
 \begin{figure}
 \includegraphics{data/max_uncompressed_size}
@@ -515,7 +527,7 @@ on a string of repeated bytes.
 \end{figure}
 
 The price of \bulkdeflate's high compression ratio is a lack of generality.
-\bulkdeflate\ can only compress strings of a single repeate byte,
+\bulkdeflate\ can only compress strings of a single repeated byte,
 and only those of specific lengths,
 namely $517 + 258 k$ for integer $k \ge 0$.
 Besides compressing densely, \bulkdeflate\ is fast,
@@ -542,7 +554,7 @@ But this is a major point of incompatibility
 between zip parsers,
 which may interpret filenames as being in
 some fixed or locale-specific encoding, or ignore the \mbox{UTF-8} bit, for example.
-So for compatibility, it's best to stick to characters
+So for compatibility, we must limit ourselves to characters
 that have the same encoding in both
 CP~437 and \mbox{UTF-8},
 namely, the \num{95} printable characters of \mbox{US-ASCII}.
@@ -550,7 +562,7 @@ namely, the \num{95} printable characters of \mbox{US-ASCII}.
 % https://bugs.python.org/issue10972
 % https://github.com/thejoshwolfe/yauzl/issues/84
 
-Another compatibility consideration is filesystem restrictions.
+We are further restricted by filesystem naming limitations.
 Some filesystems are case-insensitive, so ``a'' and ``A'' do not count as distinct names.
 Common filesystems like FAT32 prohibit certain characters like
 `*' and `?'~\cite[\S Limits]{wiki-fs}.
@@ -626,7 +638,7 @@ A~little reflection shows that it is better to
 put the longest names last, because those names are the most quoted.
 Ordering filenames longest last
 adds over \SI{900}{\MB} of output
-in the ``large'' zip bomb we will see in \autoref{sec:allocation},
+to the \mbox{zblg.zip} zip bomb we will see in \autoref{sec:allocation},
 compared to ordering them longest first.
 It is only a minor optimization, though,
 as those \SI{900}{\MB} comprise only \num{0.0003}\%
@@ -679,9 +691,9 @@ plus the little bit extra that comes from the quoted local file headers,
 produces an overall unzipped output of
 \SI{5461307620}{bytes}
 and a~compression ratio of 128~thousand.
-See the row labeled ``this technique (small)'' in \autoref{tab:comparison}.
+This zip bomb is \mbox{zbsm.zip}---refer to \autoref{tab:comparison}.
 
-Optimization produced an almost an even split
+Optimization produced an almost even split
 of the available space
 between the kernel and the file headers.
 It is not a coincidence.
@@ -699,7 +711,7 @@ Define some constants and variables:
 
 \begin{align*}
 X & & & \mbox{zip file size (take as fixed)} \\
-N & & & \mbox{number of files in the zip file} \\
+N & & & \mbox{number of files (variable to optimize)} \\
 \CDH &= \num{46} & & \mbox{size of a central directory header} \\
 \LFH &= \num{30} & & \mbox{size of a local file header} \\
 \Q   &=  \num{5} & & \mbox{size of a quoting block header} \\
@@ -779,7 +791,7 @@ S_X(N) &= (X - H(N)) \, \C \, N \\
 
 $S_X(N)$
 is a polynomial in $N$,
-so its maximum must be at a place where its derivative
+so its maximum must be at a place where the derivative
 $S'_X(N)$
 is zero.
 Taking the derivative and finding the zero gives us
@@ -887,10 +899,10 @@ In fact, as we add files we will need to \emph{decrease} the size of the kernel
 to make room for the maximum file size
 that gets slightly larger with each added file.
 
-This plan results in a zip file
+This plan results in \mbox{zblg.zip}, a zip file
 that contains $2^{16}-2$ files and a kernel that decompresses
 to $2^{32}-\num{2178825}$ bytes.
-See the row labeled ``this technique (large)'' in \autoref{tab:comparison}.
+Refer to \autoref{tab:comparison}.
 The largest file (the first file) uncompresses to
 $2^{32} - 56$ bytes.
 That is as close as we can get using \bulkdeflate---encoding
@@ -933,60 +945,6 @@ The technique described in this section is a slight extension of the
 \texttt{crc32\_combine}
 function in zlib,
 which Mark Adler has explained~\cite{crc32combine}.
-
-You can think of \CRC\ as a state machine that updates a 32-bit state register
-for each incoming bit.
-The basic update operations for a $0$~bit and a $1$~bit are:
-{
-\small
-\begin{verbatim}
-uint32 crc32_update_0(uint32 state) {
-    // Shift out the least significant bit.
-    bit b = state & 1;
-    state = state >> 1;
-    // If the shifted-out bit was 1, XOR
-    // with the CRC-32 constant.
-    if (b == 1)
-        state = state ^ 0xedb88320;
-    return state;
-}
-uint32 crc32_update_1(uint32 state) {
-    // Do as for a 0 bit, then XOR
-    // with the CRC-32 constant.
-    return crc32_update_0(state) ^ 0xedb88320;
-}
-\end{verbatim}
-}
-
-If you think of the state register as a 32-element binary vector,
-and use XOR for addition and AND for multiplication, then
-\texttt{crc32\_update\_0} is a linear transformation;
-i.e., it can be represented as multiplication by a
-$32\times32$ binary transformation matrix.
-To see why, observe multiplying a matrix by a vector
-is just summing the columns of the matrix,
-after multiplying each column by the corresponding element of the vector.
-The shift operation \texttt{state~>{}>~1}
-is just taking each bit~$i$ of the state vector
-and multiplying it by a vector that is $0$ everywhere except at bit $i-1$
-(numbering the bits from right to left).
-The conditional final XOR \texttt{state~\^~0xedb88320}
-that only happens when bit~\texttt{b} is $1$
-can instead be represented as first multiplying
-\texttt{0xedb88320} by \texttt{b}
-and then XORing it into the state unconditionally.
-
-Furthermore, \texttt{crc32\_update\_1} is just
-\texttt{crc32\_update\_0} plus (XOR) a~constant.
-That makes \texttt{crc32\_update\_1} an
-affine transformation:
-a~matrix multiplication followed by a translation (addition).
-We can represent both the matrix multiplication and the translation
-in a single step
-if we enlarge the transformation matrix's dimensions to $33\times33$
-and append an extra element to the state vector that is always $1$.
-(This representation is called
-homogeneous coordinates.)
 
 \begin{figure*}
 \begin{align*}
@@ -1075,12 +1033,66 @@ the \CRC\ polynomial constant $\mathrm{edb88320}_{16} = 111011011011100010000011
 The two matrices differ only in the final column, which represents the amount of translation
 (except for the bottom $1$ bit, which is part of the homogeneous coordinates representation).
 In $M_0$ the final column is zero and
-in $M_1$ it is 0xedb88320, the \CRC\ polynomial constant.
+in $M_1$ it is $\mathrm{edb88320}_{16}$, the \CRC\ polynomial constant.
 The 1's just above the diagonal represent the
 shift operation \texttt{state~>{}>~1}.
 }
 \label{fig:crc32matrix}
 \end{figure*}
+
+You can model \CRC\ as a state machine that updates a 32-bit state register
+for each incoming bit.
+The basic update operations for a $0$~bit and a $1$~bit are:
+{
+\small
+\begin{verbatim}
+uint32 crc32_update_0(uint32 state) {
+    // Shift out the least significant bit.
+    bit b = state & 1;
+    state = state >> 1;
+    // If the shifted-out bit was 1, XOR
+    // with the CRC-32 constant.
+    if (b == 1)
+        state = state ^ 0xedb88320;
+    return state;
+}
+uint32 crc32_update_1(uint32 state) {
+    // Do as for a 0 bit, then XOR
+    // with the CRC-32 constant.
+    return crc32_update_0(state) ^ 0xedb88320;
+}
+\end{verbatim}
+}
+
+If you think of the state register as a 32-element binary vector,
+and use XOR for addition and AND for multiplication, then
+\texttt{crc32\_update\_0} is a linear transformation;
+i.e., it can be represented as multiplication by a
+$32\times32$ binary transformation matrix.
+To see why, observe multiplying a matrix by a vector
+is just summing the columns of the matrix,
+after multiplying each column by the corresponding element of the vector.
+The shift operation \texttt{state~>{}>~1}
+is just taking each bit~$i$ of the state vector
+and multiplying it by a vector that is $0$ everywhere except at bit $i-1$
+(numbering the bits from right to left).
+The conditional final XOR \texttt{state~\^~0xedb88320}
+that only happens when bit~\texttt{b} is $1$
+can instead be represented as first multiplying
+\texttt{0xedb88320} by \texttt{b}
+and then XORing it into the state unconditionally.
+
+Furthermore, \texttt{crc32\_update\_1} is just
+\texttt{crc32\_update\_0} plus (XOR) a~constant.
+That makes \texttt{crc32\_update\_1} an
+affine transformation:
+a~matrix multiplication followed by a translation (addition).
+We can represent both the matrix multiplication and the translation
+in a single step
+if we enlarge the transformation matrix's dimensions to $33\times33$
+and append an extra element to the state vector that is always $1$.
+(This representation is called
+homogeneous coordinates.)
 
 Both operations \texttt{crc32\_update\_0} and \texttt{crc32\_update\_1}
 can be represented by a $33\times 33$ transformation matrix.
@@ -1162,13 +1174,13 @@ In exchange for a loss of compatibility
 and slightly slower growth,
 we get a practical removal of all file size limits.
 
-Suppose we want a zip bomb that expands to approximately the
-same size that 42.zip does, \SI{4.5}{\PB}.
+Suppose we want a zip bomb that expands to \SI{4.5}{\PB},
+the same size that 42.zip expands to.
 Zip64 allows us to reach that high.
 Using binary search, we find that the smallest
 zip file whose unzipped size exceeds the unzipped size of 42.zip
 has a zipped size of \SI{46}{\MB}.
-See the row marked ``this technique (Zip64)'' in \autoref{tab:comparison}.
+See the \mbox{zbxl.zip} row in \autoref{tab:comparison}.
 
 With Zip64, it's no longer practically interesting to
 consider the maximum compression ratio,
@@ -1176,11 +1188,13 @@ because we can just keep increasing the zip file size,
 and the compression ratio along with it,
 until even the compressed zip file is prohibitively large.
 An interesting threshold, though,
-is $2^{64}$ bytes (\SI{16}{\EiB} or \SI{18}{\EB})---that
+is $2^{64}$ bytes
+(\SI{18}{\EB} or \SI{16}{\EiB})---that
 much data will not fit on most filesystems~\cite[\S Limits]{wiki-fs}.
-Binary search finds the smallest input producing at least that much output:
-a~\SI{2.9}{\GB} Zip64-format quoted-overlap zip bomb
-would unzip to $2^{64}+\num{11727895877}$ bytes,
+Binary search finds the smallest zip bomb that produces at least that much output:
+it contains 12~million files and has a compressed kernel of \SI{1.5}{\GB}.
+The total size of the zip file is \SI{2.9}{\GB} and it unzips
+to $2^{64}+\num{11727895877}$ bytes,
 having a compression ratio of over 6.2~billion.
 
 
@@ -1190,6 +1204,28 @@ having a compression ratio of over 6.2~billion.
 
 \section{Discussion}
 \label{sec:discussion}
+
+\autoref{fig:zipped-size}
+
+\begin{figure}
+\includegraphics{data/zipped_size}
+\caption{
+Zipped size versus unzipped size for various zip bomb constructions.
+Note the log–log scales.
+The red and orange lines are naive zip bombs have a linear rate of growth,
+as evidenced by the 1:1 slope of the lines.
+The vertical offset of the bzip2 line shows that its compression ratio
+is about a thousand times greater than that of DEFLATE.
+The blue lines are quoted-overlap zip bombs that use DEFLATE.
+(It is not possible to use the quoted-overlap construction with bzip2.)
+They have a quadratic rate of growth,
+as shown by the 2:1 slope of the lines.
+Zip64 has a slightly lower compression ratio
+for a zip file of the same size,
+but it permits output in excess of \SI{281}{\TB}.
+}
+\label{fig:zipped-size}
+\end{figure}
 
 x
 
