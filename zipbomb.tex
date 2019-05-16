@@ -108,7 +108,7 @@ in multiple files, without making multiple copies of it.
 The zip bomb's output size grows quadratically in the input size; i.e.,
 the compression ratio gets better as the input file gets bigger.
 The construction depends on specific features of both zip and DEFLATE---it
-is not portable to other container formats or compression algorithms.
+is not directly portable to other container formats or compression algorithms.
 It is compatible with most zip parsers,
 the exceptions being ``streaming'' parsers that
 parse in one pass without first consulting the zip file's central directory.
@@ -133,7 +133,8 @@ that come with some loss of compatibility.
 
 The construction we will develop is tunable for different output sizes.
 For the sake of comparison and discussion,
-we will produce three concrete examples:
+we will produce three concrete examples.
+These examples and others are compared in \autoref{tab:comparison}.
 
 \begin{center}
 \begin{tabular}{lr@{~}l@{${} \rightarrow {}$}r@{~}ll}
@@ -178,6 +179,87 @@ are not needed to understand the construction of the zip bomb.
 For full information,
 refer to the file format specification~\cite{appnote},
 particularly Section~4.3.
+
+\begin{table*}
+\centering
+\begin{threeparttable}
+\setlength{\tabcolsep}{0.45em}
+\begin{tabular}{rr|rr@{}l|rr@{}l}
+&
+&
+\multicolumn{3}{c|}{\textbf{non-recursive}} &
+\multicolumn{3}{c}{\textbf{recursive}}
+\\
+&
+zipped size &
+unzipped size &
+\multicolumn{2}{r|}{ratio\phantom{~thousand}} &
+unzipped size &
+\multicolumn{2}{r}{ratio\phantom{~thousand}}
+\\
+Cox quine~\cite{cox} &
+\num{440} &
+\num{440} &
+\num{1}&.0 &
+$\infty$ &
+$\infty$&
+\\
+Ellingsen quine~\cite{ellingsen} &
+\num{28809} &
+\num{42569} &
+\num{1}&.5 &
+$\infty$ &
+$\infty$&
+\\
+42.zip~\cite{42.zip} &
+\num{42374}\tnote{*} &
+\num{558432} &
+\num{13}&.2 &
+\num{4507981343026016} &
+106&~billion
+\\
+zbsm.zip (this method) &
+\num{42374} &
+\num{5461307620} &
+129&~thousand &
+\num{5461307620} &
+129&~thousand
+\\
+zblg.zip (this method) &
+\num{9893525} &
+\num{281395456244934} &
+28&~million &
+\num{281395456244934} &
+28&~million
+\\
+zbxl.zip (this method, Zip64)&
+\num{45876952} &
+\num{4507981427706459} &
+98&~million &
+\num{4507981427706459} &
+98&~million
+% \\
+% zbxxl.zip &
+% \num{2961656712} &
+% \num{18446744085437447493} &
+% 6&~billion &
+% \num{18446744085437447493} &
+% 6&~billion
+\end{tabular}
+\caption{
+Comparison of zip bomb compression ratios.
+}
+\label{tab:comparison}
+\begin{tablenotes}
+\item [*]
+There are two versions of 42.zip,
+an \href{https://web.archive.org/web/20120222083624/http://www.unforgettable.dk/}{older version} of \num{42374} bytes,
+and a \href{https://web.archive.org/web/20120301154142/http://www.unforgettable.dk/}{newer version} of \num{42838} bytes.
+The only difference between them is that the newer version has a password.
+We consider only the older version.
+\end{tablenotes}
+\end{threeparttable}
+\end{table*}
 
 \begin{figure*}
 \includegraphics{figures/normal}
@@ -283,6 +365,10 @@ of overlapping files.
 % which has better compatibility
 % because it uses separate local file headers.
 
+% Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
+% used overlapping files to achieve
+% almost complete replication of the zip file itself.
+
 
 \section{The second insight:\\quoting local file headers}
 \label{sec:quote}
@@ -341,86 +427,6 @@ The green parts stand for DEFLATE non-compressed blocks.
 }
 \label{fig:quote}
 \end{figure*}
-
-\begin{table*}
-\centering
-\begin{threeparttable}
-\begin{tabular}{rr|rr@{}l|rr@{}l}
-&
-&
-\multicolumn{3}{c|}{\textbf{non-recursive}} &
-\multicolumn{3}{c}{\textbf{recursive}}
-\\
-&
-zipped size &
-unzipped size &
-\multicolumn{2}{r|}{ratio\phantom{~thousand}} &
-unzipped size &
-\multicolumn{2}{r}{ratio\phantom{~thousand}}
-\\
-Cox quine~\cite{cox} &
-\num{440} &
-\num{440} &
-\num{1}&.0 &
-$\infty$ &
-$\infty$&
-\\
-Ellingsen quine~\cite{ellingsen} &
-\num{28809} &
-\num{42569} &
-\num{1}&.5 &
-$\infty$ &
-$\infty$&
-\\
-42.zip~\cite{42.zip} &
-\num{42374}\tnote{*} &
-\num{558432} &
-\num{13}&.2 &
-\num{4507981343026016} &
-106&~billion
-\\
-zbsm.zip &
-\num{42374} &
-\num{5461307620} &
-129&~thousand &
-\num{5461307620} &
-129&~thousand
-\\
-zblg.zip &
-\num{9893525} &
-\num{281395456244934} &
-28&~million &
-\num{281395456244934} &
-28&~million
-\\
-(Zip64) zbxl.zip &
-\num{45876952} &
-\num{4507981427706459} &
-98&~million &
-\num{4507981427706459} &
-98&~million
-% \\
-% zbxxl.zip &
-% \num{2961656712} &
-% \num{18446744085437447493} &
-% 6&~billion &
-% \num{18446744085437447493} &
-% 6&~billion
-\end{tabular}
-\caption{
-Comparison of zip bomb compression ratios.
-}
-\label{tab:comparison}
-\begin{tablenotes}
-\item [*]
-There are two versions of 42.zip,
-an \href{https://web.archive.org/web/20120222083624/http://www.unforgettable.dk/}{older version} of \num{42374} bytes,
-and a \href{https://web.archive.org/web/20120301154142/http://www.unforgettable.dk/}{newer version} of \num{42838} bytes.
-The only difference between them is that the newer version has a password.
-We use only the older version.
-\end{tablenotes}
-\end{threeparttable}
-\end{table*}
 
 At this point the zip file contains two files.
 Let's walk through what a zip parser would see while parsing it.
@@ -899,7 +905,7 @@ In fact, as we add files we will need to \emph{decrease} the size of the kernel
 to make room for the maximum file size
 that gets slightly larger with each added file.
 
-This plan results in \mbox{zblg.zip}, a zip file
+The plan results in \mbox{zblg.zip}, a zip file
 that contains $2^{16}-2$ files and a kernel that decompresses
 to $2^{32}-\num{2178825}$ bytes.
 Refer to \autoref{tab:comparison}.
@@ -1130,9 +1136,9 @@ to compute $M_\mathrm{kernel}$, the matrix for the uncompressed kernel,
 which is a string of repeated bytes.
 To produce a \CRC\ checksum value from a matrix,
 multiply the matrix by the zero vector.
-(The zero vector in homogeneous coordinates, that is,
-which is 32~$0$'s followed by a $1$.
-We are omitting the minor complication of pre- and post-conditioning the checksum.)
+(The zero vector in homogeneous coordinates, that is:
+32~$0$'s followed by a $1$.
+Here we omit the minor complication of pre- and post-conditioning the checksum.)
 To compute the checksum for every file, we work backwards.
 Start by initializing $M := M_\mathrm{kernel}$.
 The checksum of the kernel is also the checksum
@@ -1169,10 +1175,35 @@ and the size of a local directory header from
 Referring to \autoref{eq:opt},
 we see that a Zip64-format zip bomb construction
 still grows quadratically,
-just slightly more slowly because of the larger denominator.
+just slightly more slowly because of the larger denominator---this
+is visible in \autoref{fig:zipped-size} in the Zip64 line's
+lower vertical placement.
 In exchange for a loss of compatibility
 and slightly slower growth,
 we get a practical removal of all file size limits.
+
+\begin{figure}
+\includegraphics{data/zipped_size}
+\caption{
+Zipped size versus unzipped size for various zip bomb constructions.
+Note the log–log scales.
+The red and orange lines are naive zip bombs without overlapping files.
+They have a linear rate of growth,
+as evidenced by their 1:1 slope.
+The vertical offset of the bzip2 line shows that its compression ratio
+is about a thousand times greater than that of DEFLATE.
+The blue lines are quoted-overlap zip bombs that use DEFLATE.
+(It is not possible to use the quoted-overlap construction with bzip2.)
+They have a quadratic rate of growth,
+as shown by their 2:1 slope.
+Zip64 has a slightly lower compression ratio
+for a zip file of the same size,
+but it permits output in excess of \SI{281}{\TB}.
+Labeled dots indicate specific zip bombs that
+also appear in \autoref{tab:comparison}.
+}
+\label{fig:zipped-size}
+\end{figure}
 
 Suppose we want a zip bomb that expands to \SI{4.5}{\PB},
 the same size that 42.zip expands to.
@@ -1200,28 +1231,6 @@ having a compression ratio of over 6.2~billion.
 
 \section{Extension: bzip2}
 \label{sec:bzip2}
-
-\begin{figure}
-\includegraphics{data/zipped_size}
-\caption{
-Zipped size versus unzipped size for various zip bomb constructions.
-Note the log–log scales.
-The red and orange lines are naive zip bombs without overlapping files.
-They have a linear rate of growth,
-as evidenced by their 1:1 slope.
-The vertical offset of the bzip2 line shows that its compression ratio
-is about a thousand times greater than that of DEFLATE.
-The blue lines are quoted-overlap zip bombs that use DEFLATE.
-(It is not possible to use the quoted-overlap construction with bzip2.)
-They have a quadratic rate of growth,
-as shown by their 2:1 slope.
-Zip64 has a slightly lower compression ratio
-for a zip file of the same size,
-but it permits output in excess of \SI{281}{\TB}.
-Labeled dots also appear in \autoref{tab:comparison}.
-}
-\label{fig:zipped-size}
-\end{figure}
 
 DEFLATE is the most common compression algorithm
 used in the zip format, but it is only one of many options~\cite[\S 4.4.5]{appnote}.
@@ -1259,16 +1268,6 @@ then you can use the full-overlap construction of \autoref{sec:overlap}.
 There is no need for quoting in that construction,
 so it is compatible with bzip2.
 
-
-\section{Discussion}
-\label{sec:discussion}
-
-\autoref{fig:zipped-size}
-
-
-% Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
-% used overlapping files to achieve
-% almost complete replication of the zip file itself.
 
 \begin{table*}
 \centering
@@ -1389,15 +1388,101 @@ and avoid the maximum values of 32-bit and 16-bit fields.
 \label{tab:compatibility}
 \end{table*}
 
+
+\section{Discussion}
+\label{sec:discussion}
+
+We have designed the zip bomb for compatibility,
+taking into consideration a number of implementation differences,
+some of which are shown in \autoref{tab:compatibility}.
+The resulting construction is compatible with zip parsers that work
+in the usual back-to-front way,
+that first consult the central directory
+and use it as an index of files.
+This includes, for example,
+zip parser included in Nail~\cite{186219},
+which is automatically generated from a formal grammar.
+The construction is not compatible, however,
+with ``streaming'' parsers,
+those that parse the zip file in one pass
+without first reading the central directory,
+reading from the beginning of the file and looking for local file headers.
+By their nature, streaming parsers
+do not support any kind of file overlapping.
+The most likely outcome is that a streaming parser
+will extract only the first file.
+They may even raise an error besides,
+as is the case with \mbox{sunzip}~\cite{sunzip},
+which parses the central directory and checks it for consistency
+after having extracted the files.
+
+It is easy to detect the type of zip bomb
+developed in this article.
+Just look for overlapping files.
+Parse the central directory,
+then sort the central directory entries
+in order of the local file headers the point to.
+Reject the zip file if any file's ``compressed size''
+metadata field would make it overlap the following file.
+In general, though, rejecting overlapping files is not sufficient.
+\autoref{sec:bzip2} and \autoref{fig:zipped-size}
+show that at small sizes, a non-overlapped bzip2 zip bomb
+is even more effective than
+the overlapped construction with DEFLATE.
+Trying to predict a zip file's total uncompressed size
+by peeking into the metadata and summing
+the ``uncompressed size'' field of every file
+does not work, in general,
+because the value of the metadata field
+may not agree with the actual uncompressed size of the file.
+In general, trying to predict in advance whether a zip file
+is safe to open or not is fraught,
+because there are so many zip parser implementations
+with differing behavior.
+Robust protection against zip bombs
+involves placing time, memory, and disk space limits
+on the zip parser while it operates.
+
+
 % ANON
 % \section*{Acknowledgements}
 
+
 \section*{Availability}
 
-% TODO: cryptobin
+\begin{quote}
+\sl
+For anonymous submission,
+we have uploaded source code
+and the three example zip bombs
+to an anonymous hosting service.
+We will of course make the source code
+and zip bombs publicly available.
+Do be careful with these---at least,
+be sure to ``Save As''
+to avoid automatic unzipping by your web browser.
+\end{quote}
+
+\begin{description}
+\item[source.zip]
+{\tiny\texttt{SHA256:TODO}}\\
+\url{TODO}
+\item[zbsm.zip]
+{\tiny\texttt{SHA256:fb4ff972d21189beec11e05109c4354d0cd6d3b629263d6c950cf8cc3f78bd99}}\\
+\url{TODO}
+\item[zblg.zip]
+{\tiny\texttt{SHA256:f1dc920869794df3e258f42f9b99157104cd3f8c14394c1b9d043d6fcda14c0a}}\\
+\url{TODO}
+\item[zbxl.zip]
+{\tiny\texttt{SHA256:eafd8f574ea7fd0f345eaa19eae8d0d78d5323c8154592c850a2d78a86817744}}\\
+\url{TODO}
+\end{description}
+
+% TODO: https://framadrop.org/
 
 % ANON
 % \url{https://www.bamsoftware.com/hacks/zipbomb/}
+% also paper sources
 
 \bibliographystyle{plain}
 \bibliography{zipbomb}
