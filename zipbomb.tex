@@ -1229,46 +1229,6 @@ to $2^{64}+\num{11727895877}$ bytes,
 having a compression ratio of over 6.2~billion.
 
 
-\section{Extension: bzip2}
-\label{sec:bzip2}
-
-DEFLATE is the most common compression algorithm
-used in the zip format, but it is only one of many options~\cite[\S 4.4.5]{appnote}.
-bzip2~\cite{bzip2}, while not nearly as compatible as DEFLATE (see \autoref{tab:compatibility}),
-is probably the second most commonly supported compression algorithm.
-Empirically, bzip2 has a maximum compression ratio of about 1.4~million,
-which allows for denser packing of the kernel.
-Ignoring the loss of compatibility,
-does bzip2 enable a more efficient zip bomb?
-
-% bzip2 starts with a run-length encoding step
-% that reduces the length of a string of repeated bytes
-% by a factor of~51.
-% Then the data is separated into
-% <data value="900000">900~<abbr title=kilobyte>kB</abbr></data> blocks
-% and each block compressed individually.
-% Empirically, one block after run-length encoding
-% can compress down to 32~bytes.
-% 900 000 × 51 / 32 = 1 434 375.
-
-Yes---but only for small files.
-The problem is that bzip2 does not have anything like the
-non-compressed blocks of DEFLATE
-that we used in \autoref{sec:quote} to quote local file headers.
-So it is not possible to reuse the kernel---each file must have
-its own copy of it, and therefore the overall compression ratio
-is not better than the ratio of any single file.
-In \autoref{fig:zipped-size} we see that
-bzip2 outperforms DEFLATE-with-quoting
-only for zip bombs under about a megabyte.
-
-If you happen to know that a certain zip parser both supports bzip2
-and tolerates mismatched filenames,
-then you can use the full-overlap construction of \autoref{sec:overlap}.
-There is no need for quoting in that construction,
-so it is compatible with bzip2.
-
-
 \begin{table*}
 \centering
 \setlength{\tabcolsep}{4pt}
@@ -1387,6 +1347,46 @@ and avoid the maximum values of 32-bit and 16-bit fields.
 }
 \label{tab:compatibility}
 \end{table*}
+
+
+\section{Extension: bzip2}
+\label{sec:bzip2}
+
+DEFLATE is the most common compression algorithm
+used in the zip format, but it is only one of many options~\cite[\S 4.4.5]{appnote}.
+bzip2~\cite{bzip2}, while not nearly as compatible as DEFLATE (see \autoref{tab:compatibility}),
+is probably the second most commonly supported compression algorithm.
+Empirically, bzip2 has a maximum compression ratio of about 1.4~million,
+which allows for denser packing of the kernel.
+Ignoring the loss of compatibility,
+does bzip2 enable a more efficient zip bomb?
+
+% bzip2 starts with a run-length encoding step
+% that reduces the length of a string of repeated bytes
+% by a factor of~51.
+% Then the data is separated into
+% <data value="900000">900~<abbr title=kilobyte>kB</abbr></data> blocks
+% and each block compressed individually.
+% Empirically, one block after run-length encoding
+% can compress down to 32~bytes.
+% 900 000 × 51 / 32 = 1 434 375.
+
+Yes---but only for small files.
+The problem is that bzip2 does not have anything like the
+non-compressed blocks of DEFLATE
+that we used in \autoref{sec:quote} to quote local file headers.
+So it is not possible to reuse the kernel---each file must have
+its own copy of it, and therefore the overall compression ratio
+is not better than the ratio of any single file.
+In \autoref{fig:zipped-size} we see that
+bzip2 outperforms DEFLATE-with-quoting
+only for zip bombs under about a megabyte.
+
+If you happen to know that a certain zip parser both supports bzip2
+and tolerates mismatched filenames,
+then you can use the full-overlap construction of \autoref{sec:overlap}.
+There is no need for quoting in that construction,
+so it is compatible with bzip2.
 
 
 \section{Discussion}
