@@ -562,7 +562,7 @@ which may interpret filenames as being in
 some fixed or locale-specific encoding, or ignore the \mbox{UTF-8} bit, for example.
 So for compatibility, we must limit ourselves to characters
 that have the same encoding in both
-CP~437 and \mbox{UTF-8},
+CP~437 and \mbox{UTF-8};
 namely, the \num{95} printable characters of \mbox{US-ASCII}.
 % https://bugs.python.org/issue10614
 % https://bugs.python.org/issue10972
@@ -911,9 +911,14 @@ to $2^{32}-\num{2178825}$ bytes.
 Refer to \autoref{tab:comparison}.
 The largest file (the first file) uncompresses to
 $2^{32} - 56$ bytes.
-That is as close as we can get using \bulkdeflate---encoding
-the final \SI{54}{bytes} would require more bytes
-than they are worth.
+That is as close as we can get using the coarse
+output sizes of \bulkdeflate---encoding
+the final \SI{54}{bytes} is not worth it.
+(The zip file as a whole has a compression ratio
+of 28~million, and the final \SI{54}{bytes} would gain
+at most $54\cdot 1032\cdot (2^{16}-2) \approx 36.5~\mathrm{million}$,
+so it would only help if the \SI{54}{bytes} can be encoded
+in \SI{1}{byte}---and we could not find a way to do it.)
 The output size of this zip bomb, \SI{281395456244934}{bytes},
 is 99.97\% of the theoretical maximum
 $(2^{32}-1)\cdot(2^{16}-1)$.
