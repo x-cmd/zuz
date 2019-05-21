@@ -103,16 +103,16 @@ are likewise perfectly safe to unzip once.
 This article shows how to construct a non-recursive zip bomb
 whose compression ratio surpasses the DEFLATE limit of 1032.
 It works by overlapping files inside the zip container,
-in order to include a ``kernel'' of highly compressed data
+in order to reference a ``kernel'' of highly compressed data
 in multiple files, without making multiple copies of it.
 The zip bomb's output size grows quadratically in the input size; i.e.,
 the compression ratio gets better as the input file gets bigger.
 The construction depends on specific features of both zip and DEFLATE---it
-is not directly portable to other container formats or compression algorithms.
+is not directly portable to other file formats or compression algorithms.
 It is compatible with most zip parsers,
 the exceptions being ``streaming'' parsers that
 parse in one pass without first consulting the zip file's central directory.
-The zip bomb construction tries to balance
+We try to balance
 two competing goals:
 \begin{itemize}
 \item
@@ -158,12 +158,12 @@ It is a list of \emph{central directory headers}.
 Each central directory header contains metadata for a single file,
 like its filename and \CRC\ checksum,
 and a backwards pointer to the file's local file header.
-A~central directory header is 46~bytes long,
+A~central directory header is \SI{46}{bytes} long,
 plus the length of the filename.
 
 A~file consists of a \emph{local file header}
 followed by compressed \emph{file data}.
-The local file header is 30~bytes long,
+The local file header is \SI{30}{bytes} long,
 plus the length of the filename.
 It contains a redundant copy
 of the metadata from the central directory header,
@@ -255,8 +255,8 @@ Comparison of zip bomb compression ratios.
 There are two versions of 42.zip,
 an \href{https://web.archive.org/web/20120222083624/http://www.unforgettable.dk/}{older version} of \num{42374} bytes,
 and a \href{https://web.archive.org/web/20120301154142/http://www.unforgettable.dk/}{newer version} of \num{42838} bytes.
-The only difference between them is that the newer version has a password.
-We consider only the older version.
+The difference is that the newer version requires a password before unzipping.
+We compare only against the older version.
 \end{tablenotes}
 \end{threeparttable}
 \end{table*}
@@ -375,15 +375,19 @@ of overlapping files.
 
 We need to somehow separate the local file headers for each file,
 while still reusing a single kernel.
+Simply concatenating all the local file headers does not work,
+because the zip parser will find a local file header
+where it expects to find the beginning of a DEFLATE stream.
+But the basic idea will work, with only a minor modification.
 We'll use a feature of DEFLATE, non-compressed blocks,
-to ``quote'' local file headers that occur later in the file
+to ``quote'' local file headers
 so that they appear to be part of the same DEFLATE stream
 that terminates in the kernel.
-Every local file header,
-except the first,
-will be interpreted two ways:
-as code (part of the structure of the zip file format)
-and as data (part of the output file data).
+Every local file header
+(except the first)
+will be interpreted in two ways:
+as code (part of the structure of the zip file)
+and as data (part of the contents of a file).
 
 A~DEFLATE stream is a sequence of
 blocks~\cite[\S 3.2.3]{rfc1951},
@@ -400,8 +404,8 @@ in a DEFLATE stream.
 The output is the concatenation of
 decompressing all the blocks in order.
 
-It is easiest to understand the construction from the inside out,
-starting with the last file and working backwards to the first.
+It is easiest to understand the quoted-overlap construction from the inside out,
+beginning with the last file and working backwards to the first.
 Refer to \autoref{fig:quote}.
 Start by inserting the kernel, which will form the end of file data for every file.
 Prepend a local file header $\LFH_N$
@@ -428,9 +432,9 @@ The green parts stand for DEFLATE non-compressed blocks.
 \label{fig:quote}
 \end{figure*}
 
-At this point the zip file contains two files.
+At this point the zip file contains two files, named ``Y'' and ``Z''.
 Let's walk through what a zip parser would see while parsing it.
-Supposed the compressed size of the kernel is \SI{1000}{bytes}
+Suppose the compressed size of the kernel is \SI{1000}{bytes}
 and the size of $\LFH_N$ is \SI{31}{bytes}.
 We start at $\CDH_{N-1}$
 and follow the pointer to $\LFH_{N-1}$.
@@ -440,23 +444,25 @@ Interpreting the following \SI{1036}{bytes} as a DEFLATE stream,
 we first encounter the 5-byte header of a non-compressed block
 that says to copy the next \SI{31}{bytes}.
 We write the next \SI{31}{bytes},
-which happen to be $\LFH_N$,
+which are $\LFH_N$,
 as output to the file ``Y''.
 Moving on in the DEFLATE stream, we find a compressed block (the kernel),
 which we decompress to file ``Y''.
 Now we have reached the end of the compressed data and are done with file ``Y''.
 Proceeding to the next file, we follow the pointer from $\CDH_N$
-to $\LFH_N$ and find a file with filename ``Z''
-and compressed size \SI{1000}{bytes}.
+to $\LFH_N$ and find a file named ``Z''
+whose compressed size is \SI{1000}{bytes}.
 Interpreting those \SI{1000}{bytes} as a DEFLATE stream,
 we immediately encounter a compressed block (the kernel again)
 and decompress it to the file ``Z''.
 Now we have reached the end of the final file and are done.
 The output file ``Z'' contains the decompressed kernel;
 the output file ``Y'' is be the same, except additionally prefixed by
-$\LFH_N$, \SI{31}{bytes} copied literally from the zip file.
+the \SI{31}{bytes} of
+$\LFH_N$.
 
-The zip file is constructed by repeating the quoting procedure.
+We complete the construction by repeating the quoting procedure
+until the zip file contains the desired number of files.
 Each new file adds a central directory header,
 a local file header,
 and a non-compressed block to quote the next local file header.
@@ -465,7 +471,7 @@ Compressed file data is generally a chain of DEFLATE non-compressed blocks
 followed by the compressed kernel.
 Each byte in the kernel contributes about
 $\num{1032}N$ to the output size,
-because it is part of all $N$ files.
+because each byte is part of all $N$ files.
 The output files are not all the same size:
 those that appear earlier in the zip file
 are larger than those that appear later,
@@ -680,7 +686,7 @@ local file headers,
 quoting block headers, and filenames.
 All the remaining space can be taken up by the kernel.
 Because $N$ has to be an integer,
-and there are only so many files you can fit
+and you can only fit so many files
 before the kernel size drops to zero,
 it suffices to test every possible value of $N$
 and select the one that yields the most output.
@@ -690,7 +696,7 @@ the size of 42.zip,
 finds a maximum at $N = 250$.
 Those \num{250} files require \SI{21195}{bytes} of overhead,
 leaving \SI{21179}{bytes} bytes for the kernel.
-The kernel, by itself, decompresses to \SI{21841249}{bytes}
+A kernel of that size decompresses to \SI{21841249}{bytes}
 (a~ratio of \num{1031.3}).
 The \num{250} copies of the decompressed kernel,
 plus the little bit extra that comes from the quoted local file headers,
@@ -700,8 +706,8 @@ and a~compression ratio of 128~thousand.
 This zip bomb is \mbox{zbsm.zip}---refer to \autoref{tab:comparison}.
 
 Optimization produced an almost even split
-of the available space
-between the kernel and the file headers.
+between the space allocated to the kernel
+and the space allocated to file headers.
 It is not a coincidence.
 Let's look at a simplified model of the quoted-overlap construction.
 In the simplified model,
@@ -813,7 +819,7 @@ S'_X(N_\OPT) &= - 2 (\CDH + \LFH + \Q) \, C \, N_\OPT + (X + \Q) \, \C \\
 $H(N_\OPT)$
 gives the optimal amount of space to allocate for file headers.
 It is independent of $\CDH$, $\LFH$, and $\C$,
-and close to $X/2$.
+and is close to $X/2$.
 
 \begin{align*}
 H(N_\OPT) &= N_\OPT\cdot(\CDH + \LFH) + (N_\OPT - 1)\cdot\Q \\
@@ -868,7 +874,7 @@ in \mbox{optimize.R} in the source code.
 
 As we make the zip file larger and larger,
 eventually we run into the limits of the zip format.
-A~zip file can contain at most $2^{16}-1$ files
+A~zip file can contain at most $2^{16}-1$ files,
 and each file can have an uncompressed size of at most $2^{32}-1$ bytes.
 Worse than that:
 some implementations (see \autoref{tab:compatibility})
@@ -897,10 +903,10 @@ we would like find the maximum compression ratio achievable
 while remaining within the limits of the zip format.
 The way to proceed is to make the kernel as large as possible,
 and have the maximum number of files.
-Even though we can no longer maintain an even split
-between the kernel and file headers,
+Even though we can no longer maintain the roughly even split
+between kernel and file headers,
 each added file \emph{does} increase the compression ratio---just
-not as fast as it would if we were able to keep growing the kernel at the same time.
+not as fast as it would if we were able to keep growing the kernel, too.
 In fact, as we add files we will need to \emph{decrease} the size of the kernel
 to make room for the maximum file size
 that gets slightly larger with each added file.
@@ -943,7 +949,7 @@ Among the metadata in the central directory header and local file header
 is a \CRC\ checksum of the uncompressed file data.
 This poses a problem, because calculating the \CRC\ of each file directly
 requires doing work proportional to the total \emph{unzipped} size,
-which is large by design (it's a zip bomb after all).
+which is large by design. (It's a zip bomb, after all.)
 We would prefer to do work that in the worst case is
 proportional to the \emph{zipped} size.
 Two factors work in our advantage:
@@ -951,7 +957,7 @@ all files share a common suffix (the kernel),
 and the uncompressed kernel is a string of repeated bytes.
 We will represent \CRC\ as a matrix product---this
 will allow us not only to compute the checksum of the kernel quickly,
-but also re-use the computation in every file.
+but also re-use computation across files.
 The technique described in this section is a slight extension of the
 \texttt{crc32\_combine}
 function in zlib,
@@ -1037,12 +1043,12 @@ M_1 &=
 \end{align*}
 \caption{
 The $33\times33$ transformation matrices $M_0$ and $M_1$ that compute
-the \CRC\ state change effected by a $0$~bit and a $1$~bit.
+the \CRC\ state change effected by a $0$~bit and a $1$~bit respectively.
 Column vectors are stored with the most significant bit at the bottom:
 reading the first column from bottom to top, you see
 the \CRC\ polynomial constant $\mathrm{edb88320}_{16} = 11101101101110001000001100100000_2$.
 The two matrices differ only in the final column, which represents the amount of translation
-(except for the bottom $1$ bit, which is part of the homogeneous coordinates representation).
+(except for the bottom $1$~bit, which is part of the homogeneous coordinates representation).
 In $M_0$ the final column is zero and
 in $M_1$ it is $\mathrm{edb88320}_{16}$, the \CRC\ polynomial constant.
 The 1's just above the diagonal represent the
@@ -1090,26 +1096,26 @@ and multiplying it by a vector that is $0$ everywhere except at bit $i-1$
 The conditional final XOR \texttt{state~\^~0xedb88320}
 that only happens when bit~\texttt{b} is $1$
 can instead be represented as first multiplying
-\texttt{0xedb88320} by \texttt{b}
+\texttt{b} by 0xedb88320
 and then XORing it into the state unconditionally.
 
 Furthermore, \texttt{crc32\_update\_1} is just
 \texttt{crc32\_update\_0} plus (XOR) a~constant.
 That makes \texttt{crc32\_update\_1} an
 affine transformation:
-a~matrix multiplication followed by a translation (addition).
+a~matrix multiplication followed by a translation (vector addition).
 We can represent both the matrix multiplication and the translation
 in a single step
 if we enlarge the transformation matrix's dimensions to $33\times33$
 and append an extra element to the state vector that is always $1$.
-(This representation is called
-homogeneous coordinates.)
+This representation is called
+homogeneous coordinates.
 
 Both operations \texttt{crc32\_update\_0} and \texttt{crc32\_update\_1}
 can be represented by a $33\times 33$ transformation matrix.
 The matrices $M_0$ and $M_1$ are shown in \autoref{fig:crc32matrix}.
-The benefit of representing \CRC\ this way is that matrices compose.
-Suppose we want to represent the static change caused by processing
+The benefit of representing \CRC\ as matrices is that matrices compose.
+Suppose we want to represent the state change effected by processing
 the ASCII character `a', whose binary representation is
 $01100001_2$.
 We can represent the cumulative \CRC\ state change of those 8~bits
@@ -1126,8 +1132,8 @@ There is an efficient algorithm to do matrix exponentiation
 called the square-and-multiply algorithm,
 which allows us to compute $M^n$
 in only about $\log_2 n$ steps.
-For example, the matrix representing state change
-of string of 9~`a's is:
+For example, the matrix representing the state change
+of a string of 9~`a's is:
 
 \begin{align*}
 (M_\mathrm{a})^9 &= M_\mathrm{a} \, M_\mathrm{a} \, M_\mathrm{a} \, M_\mathrm{a} \, M_\mathrm{a} \, M_\mathrm{a} \, M_\mathrm{a} \, M_\mathrm{a} \, M_\mathrm{a} \\
@@ -1136,8 +1142,9 @@ of string of 9~`a's is:
 &= (((M_\mathrm{a})^2)^2)^2 \, M_\mathrm{a}
 \end{align*}
 
-The square-and-multiply method is of course useful
-to compute $M_\mathrm{kernel}$, the matrix for the uncompressed kernel,
+The square-and-multiply algorithm is of course useful
+for computing $M_\mathrm{kernel}$,
+the matrix for the uncompressed kernel,
 which is a string of repeated bytes.
 To produce a \CRC\ checksum value from a matrix,
 multiply the matrix by the zero vector.
@@ -1147,8 +1154,8 @@ Here we omit the minor complication of pre- and post-conditioning the checksum.)
 To compute the checksum for every file, we work backwards.
 Start by initializing $M := M_\mathrm{kernel}$.
 The checksum of the kernel is also the checksum
-of the final file~$N$,
-so multiply $M$ by the zero matrix and store the resulting checksum in
+of the final file, file~$N$,
+so multiply $M$ by the zero vector and store the resulting checksum in
 $\CDH_N$ and $\LFH_N$.
 The file data of file~$N-1$ is the same as the file data of file~$N$,
 but with an added prefix of $\LFH_N$.
@@ -1164,34 +1171,35 @@ until all the files have been processed.
 \label{sec:zip64}
 
 In \autoref{sec:allocation} we hit a wall on expansion
-due to limits of the zip format---it was simply impossible
-to produce more than about \SI{281}{\TB} of output.
+due to limits of the zip format---it was impossible
+to produce more than about \SI{281}{\TB} of output,
+no matter how cleverly the zip file was packed.
 It is possible to surpass those limits
 using Zip64, an extension to the zip format that increases
-the size of relevant header fields to 64~bits.
+the size of certain header fields to 64~bits.
 Support for Zip64 is by no means universal,
 but it is one of the more commonly implemented extensions---see \autoref{tab:compatibility}.
-Zip64 works by appending extra data to file headers.
-For our purposes, the effect is to
+As regards the compression ratio,
+the effect of Zip64 is to
 increasing the size of a central directory header from
 \SI{46}{bytes} to \SI{58}{bytes},
 and the size of a local directory header from
 \SI{30}{bytes} to \SI{50}{bytes}.
 Referring to \autoref{eq:opt},
-we see that a Zip64-format zip bomb construction
+we see that a zip bomb in Zip64 format
 still grows quadratically,
-just slightly more slowly because of the larger denominator---this
+but slightly slower because of the larger denominator---this
 is visible in \autoref{fig:zipped-size} in the Zip64 line's
 lower vertical placement.
 In exchange for a loss of compatibility
 and slightly slower growth,
-we get a practical removal of all file size limits.
+we get the removal of all practical file size limits.
 
 \begin{figure}
 \includegraphics{data/zipped_size}
 \caption{
 Zipped size versus unzipped size for various zip bomb constructions.
-Note the log–log scales.
+Note the log--log scales.
 The red and orange lines are naive zip bombs without overlapping files.
 They have a linear rate of growth,
 as evidenced by their 1:1 slope.
@@ -1212,7 +1220,7 @@ also appear in \autoref{tab:comparison}.
 
 Suppose we want a zip bomb that expands to \SI{4.5}{\PB},
 the same size that 42.zip expands to.
-Zip64 allows us to reach that high.
+How big must the zip file be?
 Using binary search, we find that the smallest
 zip file whose unzipped size exceeds the unzipped size of 42.zip
 has a zipped size of \SI{46}{\MB}.
