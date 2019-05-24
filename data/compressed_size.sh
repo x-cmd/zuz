@@ -44,6 +44,19 @@ trial_zopfli() {
 }
 export -f trial_zopfli
 
+# Doesn't work well: for some reason -mfb=257 compresses better than -mfb=258, which points to a bug in the compressor.
+# https://sourceforge.net/p/sevenzip/discussion/45797/thread/54b32538/#72d6/0d7d/132f
+trial_7z() {
+	uncompressed_size="$1"
+	tmp_filename="$(mktemp -u --suffix=.7z)"
+	repeated_bytes "$uncompressed_size" | 7z a -mm=Deflate -mx=9 -mfb=258 -si "$tmp_filename"
+	7z l "$tmp_filename" | grep -q '^Method = Deflate$' || { echo "error: not deflated" 1>&2; exit 1; }
+	compressed_size="$(7z l "$tmp_filename" | tail -n 1 | awk '{print $4}')"
+	echo "7z,$uncompressed_size,$compressed_size"
+	rm -f "$tmp_filename"
+}
+export -f trial_7z
+
 trial_bzip2() {
 	uncompressed_size="$1"
 	compressed_size="$(repeated_bytes "$uncompressed_size" | bzip2 -c -9 | wc -c)"
@@ -61,3 +74,4 @@ seq 21705000 21736000 | run_parallel 'trial_zlib {}'
 seq 21705000 21736000 | run_parallel 'trial_infozip {}'
 seq 21713000 21746000 | run_parallel 'trial_zopfli {}'
 seq 21740000 21760000 | run_parallel 'trial_bzip2 {}'
+# seq 21705000 21736000 | run_parallel 'trial_7z {}'
