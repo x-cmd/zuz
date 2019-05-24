@@ -1429,9 +1429,18 @@ as is the case with \mbox{sunzip}~\cite{sunzip},
 which parses the central directory and checks it for consistency
 after having extracted the files.
 
-It is easy to detect the type of zip bomb
-developed in this article.
-Just look for overlapping files.
+If you need the extracted files to start with a certain byte pattern,
+that is easy to achieve:
+just insert an additional DEFLATE block before the non-compressed block
+that quotes the following local file header.
+You can include ``normal'' files within the zip bomb
+before or after the chain of files that ends in the kernel,
+if needed to conform with some packaging formats.
+Many file formats use zip as the outermost container layer;
+examples are Java JAR, Android APK, and LibreOffice documents.
+
+Detecting the type of zip bomb we have developed is easy:
+just look for overlapping files.
 Parse the central directory,
 then sort the central directory entries
 in order of the local file headers the point to.
@@ -1459,6 +1468,7 @@ on the zip parser while it operates.
 
 % ANON
 % \section*{Acknowledgements}
+% Mark Adler for comments
 
 
 \section*{Availability}
