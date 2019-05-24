@@ -10,11 +10,11 @@ repeated_bytes() {
 }
 export -f repeated_bytes
 
-trial_custom() {
+trial_bulkdeflate() {
 	uncompressed_size="$1"
 	echo "bulk_deflate,$(./bulk_deflate "$uncompressed_size")"
 }
-export -f trial_custom
+export -f trial_bulkdeflate
 
 trial_zlib() {
 	uncompressed_size="$1"
@@ -56,7 +56,7 @@ run_parallel() {
 }
 
 
-seq 21730000 21760000 | run_parallel 'trial_custom {}'
+seq 21730000 21760000 | run_parallel 'trial_bulkdeflate{}'
 seq 21705000 21736000 | run_parallel 'trial_zlib {}'
 seq 21705000 21736000 | run_parallel 'trial_infozip {}'
 seq 21713000 21746000 | run_parallel 'trial_zopfli {}'
