@@ -369,7 +369,7 @@ of overlapping files.
 % because it uses separate local file headers.
 
 
-\section{The second insight:\\quoting local file headers}
+\section{The second insight:\texorpdfstring{\\}{ }quoting local file headers}
 \label{sec:quote}
 
 We need to somehow separate the local file headers for each file,
@@ -1448,8 +1448,10 @@ Because the extra field has a length limit of
 $2^{16}-1$~bytes,
 it is only possible to quote up to \num{1808}
 local file headers,
-or \num{1170} with Zip64.
-(It is possible to switch to DEFLATE quoting after extra-field quoting is exhausted.)
+or \num{1170} with Zip64
+(assuming filenames are allocated as in \autoref{sec:filenames}).
+You can use extra-field quoting for the first (shortest) local file headers,
+but then must switch to DEFLATE quoting for the remainder of the files.
 Another problem is that we must select a 16-bit type tag~\cite[\S 4.5.2]{appnote}.
 We want to avoid using a type tag that has already been allocated
 and has meaning to parsers, or else the quoted bytes will be interpreted
@@ -1554,6 +1556,9 @@ to avoid automatic unzipping by your web browser.
 % ANON
 % \url{https://www.bamsoftware.com/hacks/zipbomb/}
 % also paper sources
+
+% ANON: for crossref in note in 42.zip bib entry
+\nocite{190996}
 
 \bibliographystyle{plain}
 \bibliography{zipbomb}
