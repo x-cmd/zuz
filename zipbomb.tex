@@ -695,7 +695,7 @@ the size of 42.zip,
 finds a maximum at $N = 250$.
 Those \num{250} files require \SI{21195}{bytes} of overhead,
 leaving \SI{21179}{bytes} bytes for the kernel.
-A kernel of that size decompresses to \SI{21841249}{bytes}
+A~kernel of that size decompresses to \SI{21841249}{bytes}
 (a~ratio of \num{1031.3}).
 The \num{250} copies of the decompressed kernel,
 plus the little bit extra that comes from the quoted local file headers,
@@ -835,41 +835,6 @@ in the input size.
 \label{eq:opt}
 S_X(N_\OPT) &= \frac{(X + \Q)^2 \, \C}{4(\CDH + \LFH + \Q)}
 \end{align}
-
-\begin{quote}
-\sl
-Note to reviewers:
-we would appreciate advice
-on adapting the simplified model
-so that $S_X(N_\OPT)$ is
-a true lower bound on the zip bomb's growth.
-The problem with the analysis above is that while it slightly underestimates
-the output size by ignoring the contribution of quoted local file headers,
-it also overestimates the size of the kernel
-by giving the kernel the bytes that would be required to store filenames.
-To be precise, $H(N)$ needs an additional term
-that upper-bounds the space required for $N$ filenames.
-The bounds we tried led to messy and unenlightening formulas.
-If it helps, the length of the $n$\/th filename is
-$\lfloor \log_{36}((n + 1) / \frac{36}{35})\rfloor + 1 =
-\lfloor \log_{36}(n + 1) + \log_{36}(35)\rfloor = O(\log n)$.
-If we let $d$ be the length of the longest filename,
-the sum of the lengths of the first $n$ filenames is
-$d\cdot(n+1) - ((36^d - 1) \frac{36}{35^2} - \frac{d}{35}) = O(n\log n)$.
-This comes from the observation that all filenames have length $\ge 1$,
-all but $36$ have length $\ge 2$,
-all but $36+36^2$ have length $\ge 3$, and in general
-all but $36+36^2+\cdots+36^{i-1} = \frac{36^i-1}{35}-1$ have length $\ge i$,
-for $1 \le i \le d$.
-Therefore the sum of lengths is \\
-$\phantom{=}\sum_{i=1}^d n - (\frac{36^i-1}{35}-1) \\
-= d\cdot(n+1) - \sum_{i=1}^d \frac{36^i-1}{35} \\
-= d\cdot(n+1) - ((36^d - 1)\frac{36}{35^2} - \frac{d}{35})$,\\
-where the last equality comes from adapting a formula found in
-\url{https://oeis.org/A014824}.
-See the comment on \texttt{sum\_filename\_lengths}
-in \mbox{optimize.R} in the source code.
-\end{quote}
 
 As we make the zip file larger and larger,
 eventually we run into the limits of the zip format.
@@ -1106,7 +1071,7 @@ a~matrix multiplication followed by a translation (vector addition).
 We can represent both the matrix multiplication and the translation
 in a single step
 if we enlarge the transformation matrix's dimensions to $33\times33$
-and append an extra element to the state vector that is always $1$.
+and append an extra element to the state vector that is always~$1$.
 This representation is called
 homogeneous coordinates.
 
@@ -1391,6 +1356,8 @@ that we used in \autoref{sec:quote} to quote local file headers.
 So it is not possible to reuse the kernel---each file must have
 its own copy, and therefore the overall compression ratio
 is not better than the ratio of any single file.
+(See the paragraph on extra-field quoting
+in the next section for a possible workaround.)
 In \autoref{fig:zipped-size} we see that
 bzip2 outperforms DEFLATE-with-quoting
 only for zip bombs under about a megabyte.
@@ -1447,6 +1414,76 @@ if needed to conform with some packaging formats.
 Many file formats use zip as the outermost container layer;
 examples are Java JAR, Android APK, and LibreOffice documents.
 
+There's another quoting trick possible.
+At the end of each local file header
+there is a variable-length
+\emph{extra field} whose purpose is to store information
+that doesn't fit into the ordinary fields of the header.
+This extra information may include, for example,
+a high-resolution timestamp or a Unix uid/gid.
+Zip64 sizes are stored in the extra field.
+Because the extra field is at the very end of the header,
+if we increase its apparent length,
+it will grow to include whatever bytes follow the local file header—such
+as the following local file header.
+The extra field provides an alternative means of quoting.
+The benefits of extra-field quoting,
+as compared to DEFLATE non-compressed block quoting,
+are threefold:
+\begin{enumerate}
+\item extra-field quoting requires only \SI{4}{bytes} of overhead,
+not~\num{5}, leaving more room for the kernel;
+\item extra-field quoting does not increase the size of files,
+which leaves more headroom for a bigger kernel when
+operating at the limits of the zip format;
+\item extra-field quoting provides a means combining quoting
+and bzip2.
+\end{enumerate}
+Despite these benefits, extra-field quoting is less flexible
+than DEFLATE quoting.
+It does not chain the way that DEFLATE quoting does:
+each local file header must quote not only the immediately next header
+but \emph{all} headers which follow.
+Because the extra field has a length limit of
+$2^{16}-1$~bytes,
+it is only possible to quote up to \num{1808}
+local file headers,
+or \num{1170} with Zip64.
+(It is possible to switch to DEFLATE quoting after extra-field quoting is exhausted.)
+Another problem is that we must select a 16-bit type tag~\cite[\S 4.5.2]{appnote}.
+We want to avoid using a type tag that has already been allocated
+and has meaning to parsers, or else the quoted bytes will be interpreted
+as meaningful extra data.
+Zip parsers are supposed to ignore unknown type tags,
+so we could choose a type tag at random,
+but there is the risk that there exists a parser for which the tag
+is meaningful, or that it could become allocated in the future.
+Extra-field quoting increases the compression ratio of
+% zbsm.zip        5461307620 / 42374      128883.45730872705
+% zbsm.extra.zip  5525059932 / 42374      130387.97215273516
+% >>> 130387.97215273516 / 128883.45730872705 - 1.0
+% 0.01167345193420899
+zbsm.zip by 1.2\%>;
+% zblg.zip        281395456244934 / 9893525       28442385.9286689
+% zblg.extra.zip  281399207414622 / 9891773       28447802.77657221
+% >>> 28447802.77657221 / 28442385.9286689 - 1.0
+% 0.00019044984189764413
+that of zblg.zip by 0.019\%;
+% zbxl.zip        4507981427706459 / 45876952     98262444.01996146
+% zbxl.extra.zip  4507981392085269 / 45875782     98264949.29471217
+% >>> "%.20f" % (98264949.29471217 / 98262444.01996146 - 1.0)
+% '0.00002549575044352714'
+and that of zbxl.zip by 0.0025\%.
+
+\begin{quote}
+\sl
+Note to reviewers:
+we are considering whether extra-field quoting meets
+our compatibility goals.
+We may decide to work the preceding paragraph
+into \autoref{sec:quote} as a primary technique.
+\end{quote}
+
 Detecting the type of zip bomb we have developed is easy:
 just look for overlapping files.
 Parse the central directory,
@@ -1477,6 +1514,7 @@ on the zip parser while it operates.
 % ANON
 % \section*{Acknowledgements}
 % Mark Adler for comments
+% NSA must be destroyed
 
 
 \section*{Availability}
