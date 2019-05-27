@@ -365,10 +365,6 @@ of overlapping files.
 % which has better compatibility
 % because it uses separate local file headers.
 
-% Somewhat related, Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
-% used overlapping files to achieve
-% almost complete replication of the zip file itself.
-
 
 \section{The second insight:\\quoting local file headers}
 \label{sec:quote}
@@ -1404,6 +1400,14 @@ so it is compatible with bzip2.
 
 \section{Discussion}
 \label{sec:discussion}
+
+In related work,
+Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
+used overlapping files to create a
+near-self-replicating zip file.
+Gynvael Coldwind~\cite[p47]{gynvael}
+has previously suggested
+overlapping files in the style of \autoref{sec:overlap}.
 
 We have designed the zip bomb for compatibility,
 taking into consideration a number of implementation differences,
