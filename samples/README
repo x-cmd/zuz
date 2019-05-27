@@ -1,0 +1,22 @@
+Sample zip files for testing the features of different parsers.
+
+42.zip - http://www.unforgettable.dk/42.zip
+Recursive zip bomb (old version without password).
+
+42.password.zip - https://web.archive.org/web/20120210181357/http://www.unforgettable.dk/42.zip
+Recursive zip bomb (new version with password).
+
+droste.zip - https://alf.nu/s/droste.zip
+Zip quine, extracts to itself and a JPEG.
+
+r.zip - http://swtch.com/r.zip
+Zip quine.
+
+bad_crc32.zip
+Incorrect CRC-32. Made by hand.
+
+zero_crc32.zip
+CRC-32 is 0x00000000 (and is incorrect). Made by hand.
+
+mismatched_filename.zip
+File is named "hello.bin" in the CDH and "hello.txt" in the LFH.
