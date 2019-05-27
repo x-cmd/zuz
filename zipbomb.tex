@@ -41,9 +41,12 @@
 \newcommand{\bulkdeflate}{\mbox{bulk\_deflate}}
 \newcommand{\CRC}{\mbox{CRC-32}}
 
-\newcommand{\yes}{\cellcolor{YellowGreen}\checkmark}
-\newcommand{\no}{\cellcolor{Bittersweet}\ding{55}}
-\newcommand{\maybe}[1]{\cellcolor{GreenYellow}#1}
+\definecolor{ycolor}{HTML}{fcf192}
+\definecolor{mcolor}{HTML}{dfe280}
+\definecolor{ncolor}{HTML}{94a7ca}
+\newcommand{\yes}{\cellcolor{ycolor}\checkmark}
+\newcommand{\maybe}[1]{\cellcolor{mcolor}#1}
+\newcommand{\no}{\cellcolor{ncolor}\ding{55}}
 
 \begin{document}
 
@@ -1278,7 +1281,7 @@ having a compression ratio of over 6.2~billion.
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#1061}{\no} &
 \href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1256}{\yes}
 \\
-\thead[r]{tolerates mismatched filenames} &
+\thead[r]{permits mismatched filenames} &
 \maybe{warns} &
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1486-L1489}{\no} &
 \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L244}{\yes} &
@@ -1287,7 +1290,7 @@ having a compression ratio of over 6.2~billion.
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#594}{\no} &
 \href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1268-L1269}{\yes}
 \\
-\thead[r]{tolerates incorrect \CRC} &
+\thead[r]{permits incorrect \CRC} &
 \maybe{warns} &
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L893-L894}{\no} &
 \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L219-L224}{\maybe{if zero}} &
@@ -1317,7 +1320,7 @@ having a compression ratio of over 6.2~billion.
 \href{https://github.com/madler/sunzip/blob/master/sunzip.c#L1139}{\yes}
 \\
 \noalign{\vspace{0.5em}}
-\thead[r]{parses full overlap\\(\autoref{sec:overlap})} &
+\thead[r]{unzips full overlap\\(\autoref{sec:overlap})} &
 \maybe{warns} &
 \no &
 \yes &
@@ -1326,7 +1329,7 @@ having a compression ratio of over 6.2~billion.
 \no &
 \no
 \\
-\thead[r]{parses quoted overlap\\(\autoref{sec:quote})} &
+\thead[r]{unzips quoted overlap\\(\autoref{sec:quote})} &
 \yes &
 \yes &
 \yes &
@@ -1335,7 +1338,7 @@ having a compression ratio of over 6.2~billion.
 \yes &
 \no
 \\
-\thead[r]{parses quoted overlap Zip64\\(\autoref{sec:zip64})} &
+\thead[r]{unzips quoted overlap Zip64\\(\autoref{sec:zip64})} &
 \yes &
 \yes &
 \yes &
@@ -1348,6 +1351,7 @@ having a compression ratio of over 6.2~billion.
 Compatibility of selected zip parsers with various zip features,
 edge cases,
 and zip bomb constructions.
+The background colors indicate a scale from \colorbox{ycolor}{less restrictive} to \colorbox{ncolor}{more restrictive}.
 For best compatibility,
 use DEFLATE compression without Zip64,
 match names in central directory headers and local file headers,
