@@ -11,6 +11,7 @@ versions.txt:
 		&& printf "\n\n## zip\n" && zip -v \
 		&& printf "\n\n## zopfli\n" && dpkg-query --show zopfli \
 		&& printf "\n\n## bzip2\n" && bzip2 --version 2>&1 \
+		&& printf "\n\n## 7z\n" && 7z i 2>&1 \
 	) > "$@"
 
 zlib_deflate: zlib_deflate.c
