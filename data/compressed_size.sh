@@ -69,9 +69,9 @@ run_parallel() {
 }
 
 
-seq 21730000 21760000 | run_parallel 'trial_bulkdeflate{}'
-seq 21705000 21736000 | run_parallel 'trial_zlib {}'
-seq 21705000 21736000 | run_parallel 'trial_infozip {}'
-seq 21713000 21746000 | run_parallel 'trial_zopfli {}'
+seq 21725000 21755000 | run_parallel 'trial_bulkdeflate {}'
+seq 21700000 21725000 | run_parallel 'trial_zlib {}'
+seq 21700000 21725000 | run_parallel 'trial_infozip {}'
+seq 21710000 21735000 | run_parallel 'trial_zopfli {}'
 seq 21740000 21760000 | run_parallel 'trial_bzip2 {}'
 # seq 21705000 21736000 | run_parallel 'trial_7z {}'
