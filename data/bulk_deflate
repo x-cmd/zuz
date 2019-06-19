@@ -3,6 +3,6 @@
 import zipbomb
 import sys
 
-compressed, uncompressed_size, _ = zipbomb.bulk_deflate(ord(b"A"), max_uncompressed_size=int(sys.argv[1]))
+compressed, uncompressed_size, _ = zipbomb.bulk_deflate(ord(b"a"), max_uncompressed_size=int(sys.argv[1]))
 compressed_size = len(compressed)
 print("{},{}".format(uncompressed_size, compressed_size))
