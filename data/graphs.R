@@ -24,10 +24,10 @@ data.max <- data.max[engine != "bzip2"]
 })()
 data.max <- data.max[engine != "infozip"]
 
-xmin <- 21080
-xmax <- 21100
-ymin <- 21710000
-ymax <- 21760000
+xmin <- 21070
+xmax <- 21090
+ymin <- 21700000
+ymax <- 21750000
 
 p <- ggplot(data.max, aes(compressed_size, max_uncompressed_size, color=engine))
 p <- p + geom_point()
@@ -53,9 +53,9 @@ panel.height <- output.height - convertWidth(sum(g$heights), "in", valueOnly=TRU
 
 # The slope of the lines in data space is 1032/1.
 angle <- atan2(1032*panel.height/(ymax-ymin), 1*panel.width/(xmax-xmin)) * (180/pi)
-p <- p + annotate("text", x=21085, y=data.max[engine == "bulk_deflate" & compressed_size==21085]$max_uncompressed_size, label="bulk_deflate", angle=angle, hjust=0, vjust=-0.6, family="Times")
-p <- p + annotate("text", x=21085, y=data.max[engine == "zopfli" & compressed_size==21085]$max_uncompressed_size, label="Zopfli", angle=angle, hjust=0, vjust=-0.6, family="Times")
-p <- p + annotate("text", x=21085, y=data.max[engine == "zlib" & compressed_size==21085]$max_uncompressed_size, label="zlib and Info-ZIP", angle=angle, hjust=0, vjust=-0.6, family="Times")
+p <- p + annotate("text", x=21075, y=data.max[engine == "bulk_deflate" & compressed_size==21075]$max_uncompressed_size, label="bulk_deflate", angle=angle, hjust=0, vjust=-0.6, family="Times")
+p <- p + annotate("text", x=21075, y=data.max[engine == "zopfli" & compressed_size==21075]$max_uncompressed_size, label="Zopfli", angle=angle, hjust=0, vjust=-0.6, family="Times")
+p <- p + annotate("text", x=21075, y=data.max[engine == "zlib" & compressed_size==21075]$max_uncompressed_size, label="zlib and Info-ZIP", angle=angle, hjust=0, vjust=-0.6, family="Times")
 
 ggsave("max_uncompressed_size.pdf", p, width=output.width, height=output.height, device=cairo_pdf)
 
