@@ -482,14 +482,15 @@ for (num_files in c(2^(0:15), 65534)) {
 	unzipped_size <- NONE_BZIP2_unzipped_size_given_compressed_size(compressed_size, num_files)
 	record("none_bzip2", zipped_size, unzipped_size)
 }
-compressed_size <- 250
+max_compressed_size <- 250
 while (TRUE) {
+	compressed_size <- BZIP2_compressed_size_given_max_compressed_size(max_compressed_size)
 	zipped_size <- NONE_64_zipped_size_given_compressed_size(compressed_size, 1)
 	unzipped_size <- NONE_BZIP2_unzipped_size_given_compressed_size(compressed_size, 1)
 	if (unzipped_size > 2^62)
 		break
 	record("none_bzip2_zip64", zipped_size, unzipped_size)
-	compressed_size <- floor(compressed_size * 1.5)
+	max_compressed_size <- floor(max_compressed_size * 1.5)
 }
 
 # full_deflate
