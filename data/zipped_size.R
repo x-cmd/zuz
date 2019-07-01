@@ -466,6 +466,15 @@ for (num_files in c(2^(0:15), 65534)) {
 }
 compressed_size <- 250
 while (TRUE) {
+	zipped_size <- NONE_zipped_size_given_compressed_size(compressed_size, 1)
+	unzipped_size <- NONE_DEFLATE_unzipped_size_given_compressed_size(compressed_size, 1)
+	if (unzipped_size > 0xfffffffe)
+		break
+	record("none_deflate", zipped_size, unzipped_size)
+	compressed_size <- floor(compressed_size * 1.5)
+}
+compressed_size <- 250
+while (TRUE) {
 	zipped_size <- NONE_64_zipped_size_given_compressed_size(compressed_size, 1)
 	unzipped_size <- NONE_DEFLATE_unzipped_size_given_compressed_size(compressed_size, 1)
 	if (unzipped_size > 2^62)
