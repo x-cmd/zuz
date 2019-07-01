@@ -1356,8 +1356,8 @@ that we used in \autoref{sec:quote} to quote local file headers.
 So it is not possible to reuse the kernel---each file must have
 its own copy, and therefore the overall compression ratio
 is not better than the ratio of any single file.
-(See \hyperref[para:extra]{the paragraph on extra-field quoting}
-in the next section for a possible workaround.)
+(See \hyperref[sec:extra]{the next section}
+on extra-field quoting for a possible workaround.)
 In \autoref{fig:zipped-size} we see that
 bzip2 outperforms DEFLATE-with-quoting
 only for zip bombs under about a megabyte.
@@ -1369,52 +1369,9 @@ There is no need for quoting in that construction,
 so it is compatible with bzip2.
 
 
-\section{Discussion}
-\label{sec:discussion}
+\section{Extra-field quoting}
+\label{sec:extra}
 
-In related work,
-Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
-used overlapping files to create a
-near-self-replicating zip file.
-Gynvael Coldwind~\cite[p47]{gynvael}
-has previously suggested
-overlapping files in the style of \autoref{sec:overlap}.
-
-We have designed the quoted-overlap zip bomb construction for compatibility,
-taking into consideration a number of implementation differences,
-some of which are shown in \autoref{tab:compatibility}.
-The resulting construction is compatible with zip parsers that work
-in the usual back-to-front way,
-first consulting the central directory
-and using it as an index of files.
-Among these is the example
-zip parser included in Nail~\cite{186219},
-which is automatically generated from a formal grammar.
-The construction is not compatible, however,
-with ``streaming'' parsers,
-those that parse the zip file from beginning to end in one pass
-without first reading the central directory.
-By their nature, streaming parsers
-do not permit any kind of file overlapping.
-The most likely outcome is that they
-will extract only the first file.
-They may even raise an error besides,
-as is the case with \mbox{sunzip}~\cite{sunzip},
-which parses the central directory at the end and checks it for consistency
-with the local file headers it has already seen.
-
-If you need the extracted files to start with a certain prefix
-other than the bytes of a local file header,
-you can insert a DEFLATE block before the
-non-compressed block that quotes the next header.
-Not every file in the zip file has to participate in the bomb construction:
-you can also include ordinary files
-if needed to conform to some special format.
-Many file formats use zip as a container;
-examples are Java JAR, Android APK, and LibreOffice documents.
-
-\phantomsection
-\label{para:extra}
 There's another quoting trick possible.
 At the end of each local file header
 there is a variable-length
@@ -1477,14 +1434,50 @@ that of zblg.zip by 0.019\%;
 % '0.00002549575044352714'
 and that of zbxl.zip by 0.0025\%.
 
-\begin{quote}
-\sl
-Note to reviewers:
-we are considering whether extra-field quoting meets
-our compatibility goals.
-We may decide to work the preceding paragraph
-into \autoref{sec:quote} as a primary technique.
-\end{quote}
+
+\section{Discussion}
+\label{sec:discussion}
+
+In related work,
+Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
+used overlapping files to create a
+near-self-replicating zip file.
+Gynvael Coldwind~\cite[p47]{gynvael}
+has previously suggested
+overlapping files in the style of \autoref{sec:overlap}.
+
+We have designed the quoted-overlap zip bomb construction for compatibility,
+taking into consideration a number of implementation differences,
+some of which are shown in \autoref{tab:compatibility}.
+The resulting construction is compatible with zip parsers that work
+in the usual back-to-front way,
+first consulting the central directory
+and using it as an index of files.
+Among these is the example
+zip parser included in Nail~\cite{186219},
+which is automatically generated from a formal grammar.
+The construction is not compatible, however,
+with ``streaming'' parsers,
+those that parse the zip file from beginning to end in one pass
+without first reading the central directory.
+By their nature, streaming parsers
+do not permit any kind of file overlapping.
+The most likely outcome is that they
+will extract only the first file.
+They may even raise an error besides,
+as is the case with \mbox{sunzip}~\cite{sunzip},
+which parses the central directory at the end and checks it for consistency
+with the local file headers it has already seen.
+
+If you need the extracted files to start with a certain prefix
+other than the bytes of a local file header,
+you can insert a DEFLATE block before the
+non-compressed block that quotes the next header.
+Not every file in the zip file has to participate in the bomb construction:
+you can also include ordinary files
+if needed to conform to some special format.
+Many file formats use zip as a container;
+examples are Java JAR, Android APK, and LibreOffice documents.
 
 Detecting the type of zip bomb we have developed is easy:
 just look for overlapping files.
@@ -1531,6 +1524,8 @@ Brandon Enright,
 Marek Majkowski,
 and Josh Wolfe
 for comments on a draft of this article.
+Caolán McNamara evaluated the security impact
+on LibreOffice.
 
 
 \section*{Availability}
