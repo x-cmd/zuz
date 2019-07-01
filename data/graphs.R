@@ -75,10 +75,20 @@ ymin <- min(data$zipped_size, data$unzipped_size)
 ymax <- 1000^6
 
 data <- data[(class %in% c(
+	# "full_bzip2",
+	# "full_bzip2_zip64",
+	# "full_deflate",
+	# "full_deflate_zip64",
+	"none_bzip2",
+	"none_bzip2_zip64",
+	"none_deflate",
+	"none_deflate_zip64",
 	"quoted_deflate",
 	"quoted_deflate_zip64",
-	"none_deflate_zip64",
-	"none_bzip2_zip64",
+	# "quoted_deflate_extra",
+	# "quoted_deflate_zip64_extra",
+	"quoted_bzip2_extra",
+	"quoted_bzip2_zip64_extra",
 	"42_nonrec",
 	"42_rec"
 ))]
@@ -88,12 +98,16 @@ palette <- c(
 	full_bzip2_zip64="pink",
 	full_deflate="pink",
 	full_deflate_zip64="pink",
-	none_bzip2="pink",
-	none_bzip2_zip64="tomato",
-	none_deflate="pink",
-	none_deflate_zip64="salmon",
-	quoted_deflate="slateblue",
-	quoted_deflate_zip64="dodgerblue",
+	none_bzip2="coral",
+	none_bzip2_zip64="lightcoral",
+	none_deflate="darkslateblue",
+	none_deflate_zip64="lightslateblue",
+	quoted_deflate="midnightblue",
+	quoted_deflate_zip64="slateblue",
+	quoted_deflate_extra="pink",
+	quoted_deflate_zip64_extra="pink",
+	quoted_bzip2_extra="salmon",
+	quoted_bzip2_zip64_extra="lightsalmon",
 	"42_nonrec"="red",
 	"42_rec"="red"
 )
@@ -102,7 +116,7 @@ p <- ggplot(data)
 # p <- p + geom_hline(yintercept=281470681677825, size=0.5, linetype=2, color="gray")
 p <- p + geom_abline(slope=1, intercept=0, size=0.2, linetype=3)
 # p <- p + geom_point(data=data[class %in% c("42_nonrec", "42_rec")], aes(zipped_size, unzipped_size, color=class))
-p <- p + geom_line(size=0.4, aes(zipped_size, unzipped_size, color=class))
+p <- p + geom_line(size=0.4, aes(zipped_size, unzipped_size, color=class), alpha=0.8)
 p <- p + scale_color_manual(values=palette)
 p <- p + scale_x_log10(breaks=byte_breaks, labels=byte_labels, minor_breaks=byte_breaks_minor)
 p <- p + scale_y_log10(breaks=byte_breaks, labels=byte_labels, minor_breaks=byte_breaks_minor)
@@ -111,33 +125,51 @@ p <- p + labs(x="zipped size", y="unzipped size")
 p <- p + theme_minimal()
 p <- p + theme(text=element_text(size=10, family="Times"), legend.position="none")
 
-angle_label_at_sub <- function(at, x, y, angle, label, vjust) {
-	i <- findInterval(at, x) + 1
-	annotate("text", x=x[[i]], y=y[[i]], angle=angle, label=label, hjust=0, vjust=vjust, size=3, family="Times")
+# Like approx, but linearly extrapolates beyond the endpoints
+interp <- function(at, x, y) {
+	i <- findInterval(at, x)
+	if (i == 0) {
+		slope <- (y[[2]] - y[[1]]) / (x[[2]] - x[[1]])
+		ref <- 1
+	} else if (i == length(x)) {
+		slope <- (y[[i]] - y[[i-1]]) / (x[[i]] - x[[i-1]])
+		ref <- i
+	} else {
+		slope <- (y[[i+1]] - y[[i]]) / (x[[i+1]] - x[[i]])
+		ref <- i
+	}
+	y[[ref]] + slope * (at - x[[ref]])
 }
 
-angle_label_at <- function(at, df, angle, label, vjust) {
+angle_label_at_sub <- function(at, x, y, angle, label, hjust, vjust) {
+	annotate("text", x=at, y=interp(at, x, y), angle=angle, label=label, hjust=hjust, vjust=vjust, size=3, family="Times")
+}
+
+angle_label_at <- function(at, df, angle, label, hjust, vjust) {
 	df <- df[order(df$zipped_size)]
-	angle_label_at_sub(at, df$zipped_size, df$unzipped_size, angle, label, vjust)
+	angle_label_at_sub(at, df$zipped_size, df$unzipped_size, angle, label, hjust, vjust)
 }
 
-p <- p + angle_label_at(10^6.5, data[class=="none_deflate_zip64"], label="DEFLATE", angle=45, -0.5)
-p <- p + angle_label_at(4000, data[class=="none_bzip2_zip64"], label="bzip2", angle=45, -0.5)
-p <- p + angle_label_at(2000, data[class=="quoted_deflate"], label="quoted DEFLATE", angle=atan2(2, 1)*180/pi, -0.5)
-p <- p + angle_label_at(20000000, data[class=="quoted_deflate_zip64"], label="quoted DEFLATE (Zip64)", angle=atan2(2, 1)*180/pi, -0.5)
+p <- p + angle_label_at(10^7.95, data[class=="none_deflate"], label="no-overlap DEFLATE", angle=45, 1, -0.3)
+p <- p + angle_label_at(10^8.1, data[class=="none_deflate_zip64"], label="(Zip64)", angle=45, 0, -0.3)
+p <- p + angle_label_at(10^8.2, data[class=="none_bzip2"], label="no-overlap bzip2", angle=45, 1, +1.4)
+p <- p + angle_label_at(10^8.35, data[class=="none_bzip2_zip64"], label="(Zip64)", angle=45, 0, +1.4)
+p <- p + angle_label_at(10^6.95, data[class=="quoted_deflate"], label="quoted DEFLATE", angle=atan2(2, 1)*180/pi, 1, -0.3)
+p <- p + angle_label_at(10^7.1, data[class=="quoted_deflate_zip64"], label="(Zip64)", angle=atan2(2, 1)*180/pi, 0, -0.3)
+p <- p + angle_label_at(10^3.5, data[class=="quoted_bzip2_extra"], label="extra-field-quoted bzip2", angle=atan2(2, 1)*180/pi, 0.6, -0.3)
+p <- p + angle_label_at(10^4.25, data[class=="quoted_bzip2_zip64_extra"], label="(Zip64)", angle=atan2(2, 1)*180/pi, 0, -0.3)
 
-points <- data.frame(
-	x=c(42374*10^1.5, 9893525*10^-1.5, 45876952*10^0.5, 42374*10^0.6, 42374),
-	y=c(5461307620*10^-1.1, 281395456244934*10^-0.5, 4507981427706459/100, 558432*10^-0.6, 4507981343026016*10),
-	xend=c(42374, 9893525, 45876952, 42374, 42374),
-	yend=c(5461307620, 281395456244934, 4507981427706459, 558432, 4507981343026016),
-	nudge_h=c(0.1, -0.1, 0.0, 0.1, 0.0),
-	nudge_v=c(-0.05, -0.05, -0.1, -0.1, 0.12),
-	label=c("zbsm.zip", "zblg.zip", "zbxl.zip", "42.zip (non-recursive)", "42.zip (recursive)"),
-	class=c("quoted_deflate", "quoted_deflate", "quoted_deflate_zip64", "42_nonrec", "42_rec")
-)
-p <- p + geom_segment(data=points, aes(x=x, y=y, xend=xend, yend=yend), size=0.2, alpha=0.5, position=position_nudge(points$nudge_h, points$nudge_v), arrow=arrow(length=unit(0.2, "cm")))
-p <- p + geom_point(data=points, aes(x=xend, y=yend, color=class), size=1)
-p <- p + geom_text(data=points, aes(x=x, y=y, label=label), alpha=0.5, position=position_nudge(points$nudge_h, points$nudge_v), size=3, hjust=0.5*(1.0-sign(points$nudge_h)), vjust=0.5*(1.0-sign(points$nudge_v)), family="Times")
+points <- fread("
+label,class,x,y,nudge_h,nudge_v
+zbsm.zip,quoted_deflate,42374,5461307620,0.15,0.0
+zblg.zip,quoted_deflate,9893525,281395456244934,0.15,0.0
+zbxl.zip,quoted_deflate_zip64,45876952,4507981427706459.0,0.15,0.0
+42.zip (non-recursive),42_nonrec,42374,558432,0.0,-0.25
+42.zip (recursive),42_rec,42374,4507981343026016,0.0,0.25
+")
+# zbbz2.zip,quoted_bzip2_extra,155846,7721949598695,-0.15,0.0
+# p <- p + geom_segment(data=points, aes(x=x, y=y, xend=xend, yend=yend), size=0.2, alpha=0.5, position=position_nudge(points$nudge_h, points$nudge_v), arrow=arrow(length=unit(0.2, "cm")))
+p <- p + geom_point(data=points, aes(x=x, y=y, color=class), size=1)
+p <- p + geom_text(data=points, aes(x=x, y=y, label=label), color="#888888", position=position_nudge(points$nudge_h, points$nudge_v), size=2.75, hjust=0.5*(1.0-sign(points$nudge_h)), vjust=0.5, family="Times")
 
 ggsave("zipped_size.pdf", p, width=column.width, height=6.5, device=cairo_pdf)
