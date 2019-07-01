@@ -672,6 +672,12 @@ with(list(params=QUOTED_DEFLATE_64_optimize_for_zipped_size(45876952)), record(
 	QUOTED_DEFLATE_64_unzipped_size_given_compressed_size(params$compressed_size, params$num_files),
 	"zbxl.zip"
 ))
+with(list(params=QUOTED_BZIP2_optimize_for_num_files(1809, extra_quoting=TRUE)), record(
+	"quoted_bzip2_extra",
+	QUOTED_BZIP2_zipped_size_given_max_uncompressed_size(params$max_uncompressed_size, params$num_files, extra_quoting=TRUE),
+	QUOTED_BZIP2_unzipped_size_given_max_uncompressed_size(params$max_uncompressed_size, params$num_files, extra_quoting=TRUE),
+	"zbbz2.zip"
+))
 # with(list(params=QUOTED_DEFLATE_64_optimize_for_zipped_size(2961656712)), record(
 # 	"quoted_deflate_zip64",
 # 	QUOTED_64_zipped_size_given_compressed_size(params$compressed_size, params$num_files),
