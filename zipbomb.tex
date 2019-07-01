@@ -55,8 +55,7 @@
 \title{\Large \bf A better zip bomb}
 
 \author{
-% ANON
-% {\rm David Fifield}
+{\rm David Fifield}
 }
 
 \maketitle
@@ -852,7 +851,7 @@ so our limits are actually $2^{16}-2$ and $2^{32}-2$.
 It happens that the first limit we hit is the one on uncompressed file size.
 At a zip file size of \SI{8319377}{bytes},
 naive optimization would give us a file count of \num{47837}
-and a largest file with an impossible size of
+and a largest file with the impossible size of
 $2^{32}+311$ bytes.
 % $compressed_size
 % [1] 4160277
@@ -1271,8 +1270,7 @@ having a compression ratio of over 6.2~billion.
 \yes &
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1311-L1313}{\yes} &
 \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L406-L414}{\yes} &
-% ANON
-\no & % \href{https://github.com/thejoshwolfe/yauzl/issues/109}{\no} &
+\href{https://github.com/thejoshwolfe/yauzl/issues/109}{\no} &
 \href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L59}{\yes} &
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive_common.h#95}{\yes} &
 \href{https://github.com/madler/sunzip/blob/master/sunzip.c#L1275-L1277}{\yes}
@@ -1281,8 +1279,7 @@ having a compression ratio of over 6.2~billion.
 \yes &
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L258-L259}{\yes} &
 \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L502-L511}{\yes} &
-% ANON
-\no & % \href{https://github.com/thejoshwolfe/yauzl/issues/108}{\no} &
+\href{https://github.com/thejoshwolfe/yauzl/issues/108}{\no} &
 \href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L79}{\yes} &
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive_common.h#51}{\yes} &
 \href{https://github.com/madler/sunzip/blob/master/sunzip.c#L1139}{\yes}
@@ -1518,52 +1515,35 @@ Handle zip parsing,
 as any complex operation on untrusted data,
 with caution.
 
+% TODO
+% LibreOffice
+% addons.mozilla.org
+% Adler patch
+% https://github.com/madler/unzip/commits/6519bf0f8a896851d9708da11e1b63c818238c8f
+% https://github.com/madler/unzip/commit/47b3ceae397d21bf822bc2ac73052a4b1daf8e1c
 
-% ANON
-% \section*{Acknowledgements}
-% Mark Adler for comments
+\section*{Acknowledgements}
+
+We thank
+Mark Adler,
+Russ Cox,
+Brandon Enright,
+Marek Majkowski,
+and Josh Wolfe
+for comments on a draft of this article.
 
 
 \section*{Availability}
 
-\begin{quote}
-\sl
-For anonymous submission,
-we have uploaded source code
-and the three example zip bombs
-to an anonymous hosting service.
-We will of course make the source code
-and zip bombs publicly available.
-Do be careful with these---at least,
-be sure to ``Save As''
-to avoid automatic unzipping by your web browser.
-\end{quote}
+The zip bombs developed in this article,
+the programs used to create them,
+and the source code for the article itself
+as well as the digrams
+are available from
+\url{https://www.bamsoftware.com/hacks/zipbomb/}.
 
-\begin{description}
-\item[source.zip]
-{\tiny\texttt{SHA256:965bda4ed4535956fbd8880efe78d64fbc6e31a835306b85f6bb551bfbc106ef}}\\
-\url{https://framadrop.org/r/ZZ9ahctElh#11Gnm6QqzXMaM5XR20RUhre4+6Sz5I3CPGUoWj3TsrY=}
-% delete: https://framadrop.org/d/ZZ9ahctElh/R9iwMZDeMagqwpBaI9qxxp-gyo2G5cE1
-\item[zbsm.zip]
-{\tiny\texttt{SHA256:fb4ff972d21189beec11e05109c4354d0cd6d3b629263d6c950cf8cc3f78bd99}}\\
-\url{https://framadrop.org/r/UIVszQVrjt#6vTkGCBCSJd50sz9oS+ZiK1SNYbGaX2hOdUPAgckp88=}
-% delete: https://framadrop.org/d/UIVszQVrjt/lSchujI4R7mZu_fKiNVHZLD9FWegrUao
-\item[zblg.zip]
-{\tiny\texttt{SHA256:f1dc920869794df3e258f42f9b99157104cd3f8c14394c1b9d043d6fcda14c0a}}\\
-\url{https://framadrop.org/r/7xWQcduGPR#KyD7bm7CB4PQwTwXW5J6WEIsqilwZWx+6L/Tgcmk0L0=}
-% delete: https://framadrop.org/d/7xWQcduGPR/stPh96ORph_vzNMjat_LK329R7UHmPJQ
-\item[zbxl.zip]
-{\tiny\texttt{SHA256:eafd8f574ea7fd0f345eaa19eae8d0d78d5323c8154592c850a2d78a86817744}}\\
-\url{https://framadrop.org/r/6JET9-Ieb-#mreNPDbTk28ouqDm+x02dHWOSWf0QwemE9jCugPyM3Q=}
-% delete: https://framadrop.org/d/6JET9-Ieb-/nVm19XNqfmhpGpa8VPmwitxJuoyc0HIF
-\end{description}
-
-% ANON
-% \url{https://www.bamsoftware.com/hacks/zipbomb/}
-% also paper sources
-
-% ANON: for crossref in note in 42.zip bib entry
-\nocite{190996}
+% TODO
+% artifact
 
 \bibliographystyle{plain}
 \bibliography{zipbomb}
