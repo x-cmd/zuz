@@ -1373,7 +1373,7 @@ In \autoref{fig:zipped-size} we see that
 no-overlap bzip2 outperforms quoted DEFLATE
 only for files under about a megabyte.
 
-There is still hope for recovering bzip2---an
+There is still hope for using bzip2---an
 alternative means of local file header quoting
 discussed in \hyperref[sec:extra]{the next section}.
 Additionally,
@@ -1546,6 +1546,7 @@ the ``uncompressed size'' fields of all files
 does not work, in general,
 because the value stored in the headers
 may not agree with the actual uncompressed size.
+(See the ``permits too-short file size'' row in \autoref{tab:compatibility}.)
 Robust protection against zip bombs
 involves placing time, memory, and disk space limits
 on the zip parser while it operates.
