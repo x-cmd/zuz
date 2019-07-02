@@ -1155,34 +1155,12 @@ and the size of a local directory header from
 Referring to \autoref{eq:opt},
 we see that a zip bomb in Zip64 format
 still grows quadratically,
-but more slowly because of the larger denominator---this
-is visible in \autoref{fig:zipped-size} in the Zip64 line's
-slightly lower vertical placement.
+but more slowly because of the larger denominator.
 In exchange for the loss of compatibility
 and slower growth,
 we get the removal of all practical file size limits.
-
-\begin{figure}
-\includegraphics{data/zipped_size}
-\caption{
-Zipped size versus unzipped size for various zip bomb constructions.
-Note the log--log scales.
-The red and orange lines are naive zip bombs without overlapping files.
-They have a linear rate of growth,
-as evidenced by their 1:1 slope.
-The vertical offset of the bzip2 line shows that its compression ratio
-is about a thousand times greater than that of DEFLATE.
-The blue lines are quoted-overlap zip bombs that use DEFLATE.
-They have a quadratic rate of growth,
-as shown by their 2:1 slope.
-Zip64 has a slightly lower compression ratio
-for a zip file of the same size,
-but it permits output in excess of \SI{281}{\TB}.
-Labeled dots indicate specific zip bombs that
-also appear in \autoref{tab:comparison}.
-}
-\label{fig:zipped-size}
-\end{figure}
+\autoref{fig:zipped-size} compares various zip bomb constructions
+with and without Zip64.
 
 Suppose we want a zip bomb that expands to \SI{4.5}{\PB},
 the same size that 42.zip recursively expands to.
@@ -1190,9 +1168,9 @@ How big must the zip file be?
 Using binary search, we find that the smallest
 zip file whose unzipped size exceeds the unzipped size of 42.zip
 has a zipped size of \SI{46}{\MB}.
-See the \mbox{zbxl.zip} row in \autoref{tab:comparison}.
+See \mbox{zbxl.zip} in \autoref{tab:comparison} and \autoref{fig:zipped-size}.
 
-With Zip64, it's not practically interesting to
+With Zip64, it's no longer practically interesting to
 consider the maximum compression ratio,
 because we can just keep increasing the zip file size,
 and the compression ratio along with it,
@@ -1206,6 +1184,32 @@ it contains 12~million files and has a compressed kernel of \SI{1.5}{\GB}.
 The total size of the zip file is \SI{2.9}{\GB} and it unzips
 to $2^{64}+\num{11727895877}$ bytes,
 having a compression ratio of over 6.2~billion.
+
+\begin{figure}
+\includegraphics{data/zipped_size}
+\caption{
+Zipped size versus unzipped size for various zip bomb constructions.
+Note the log--log scales.
+Each construction is shown with and without Zip64.
+The no-overlap constructions
+have a linear rate of growth,
+which is visible in the 1:1 slope of the lines.
+The vertical offset of the bzip2 lines shows that the compression ratio
+of bzip2 is about a thousand times greater than that of DEFLATE.
+The quoted-DEFLATE constructions
+have a quadratic rate of growth,
+as evidenced by the 2:1 slope of the lines.
+The Zip64 variant is slightly less efficient,
+but permits output in excess of \SI{281}{\TB}.
+The lines for extra-field-quoted bzip2
+transition from quadratic to linear
+upon reaching either the maximum file size ($2^{32}-2$ bytes),
+or the maximum number of files allowed by extra-field quoting.
+Labeled dots mark specific instances that
+appear in \autoref{tab:comparison}.
+}
+\label{fig:zipped-size}
+\end{figure}
 
 
 \begin{table*}
@@ -1332,7 +1336,7 @@ and avoid the maximum values of 32-bit and 16-bit fields.
 
 DEFLATE is the most common compression algorithm
 used in the zip format, but it is only one of many options~\cite[\S 4.4.5]{appnote}.
-bzip2~\cite{bzip2}, while not nearly as compatible as DEFLATE (see \autoref{tab:compatibility}),
+bzip2~\cite{bzip2}, while not as compatible as DEFLATE (see \autoref{tab:compatibility}),
 is probably the second most commonly supported compression algorithm.
 Empirically, bzip2 has a maximum compression ratio of about 1.4~million,
 which allows for denser packing of the kernel.
@@ -1353,71 +1357,108 @@ Yes---but only for small files.
 The problem is that bzip2 does not have anything like the
 non-compressed blocks of DEFLATE
 that we used in \autoref{sec:quote} to quote local file headers.
-So it is not possible to reuse the kernel---each file must have
+So it is not possible to overlap files and reuse the kernel---each file must have
 its own copy, and therefore the overall compression ratio
-is not better than the ratio of any single file.
-(See \hyperref[sec:extra]{the next section}
-on extra-field quoting for a possible workaround.)
+is no better than the ratio of any single file.
 In \autoref{fig:zipped-size} we see that
-bzip2 outperforms DEFLATE-with-quoting
-only for zip bombs under about a megabyte.
+no-overlap bzip2 outperforms quoted DEFLATE
+only for files under about a megabyte.
 
-If you happen to know that a certain zip parser both supports bzip2
-and tolerates mismatched filenames,
-then you can use the full-overlap construction of \autoref{sec:overlap}.
-There is no need for quoting in that construction,
-so it is compatible with bzip2.
+There is still hope for recovering bzip2---an
+alternative means of local file header quoting
+discussed in \hyperref[sec:extra]{the next section}.
+Additionally,
+if you happen to know that a certain zip parser supports bzip2
+\emph{and} tolerates mismatched filenames,
+then you can use the full-overlap construction of \autoref{sec:overlap},
+which has no need for quoting.
 
 
-\section{Extra-field quoting}
+\section{Extension: extra-field quoting}
 \label{sec:extra}
 
-There's another quoting trick possible.
-At the end of each local file header
+In \autoref{sec:quote} we used a feature of
+DEFLATE to quote local file headers,
+and in \autoref{sec:bzip2} we saw that the same trick
+did not work with bzip2.
+There is an alternative means of quoting,
+somewhat more limited,
+that only uses features of the zip format
+and does not depend on the compression algorithm.
+
+At the end of the local file header structure
 there is a variable-length
 \emph{extra field} whose purpose is to store information
-that doesn't fit into the ordinary fields of the header.
-This extra information may include, for example,
+that doesn't fit into the ordinary fields of the header~\cite[\S 4.3.7]{appnote}.
+The extra information may include, for example,
 a high-resolution timestamp or a Unix uid/gid;
-Zip64 sizes are stored in the extra field.
-Because the extra field is at the very end of the header,
-if we increase its apparent length,
-it will grow to include whatever bytes follow---such
-as the next local file header.
-The extra field therefore provides an alternative means of quoting.
+Zip64 information is stored in the extra field.
+The extra field is represented as a length--value structure;
+if we increase the length field without adding value,
+then the extra field will grow to include whatever
+comes after it in the zip file---namely
+the next local file header.
+Using this technique, each local file header
+can ``quote'' the following local file headers
+by enclosing them within its own extra field.
 The benefits of extra-field quoting,
 as compared to DEFLATE non-compressed block quoting,
 are threefold:
+
 \begin{enumerate}
-\item extra-field quoting requires only \SI{4}{bytes} of overhead,
-not~\num{5}, leaving more room for the kernel;
-\item extra-field quoting does not increase the size of files,
+\item Extra-field quoting requires only \SI{4}{bytes} of overhead,
+not~\num{5}, leaving more room for the kernel.
+\item Extra-field quoting does not increase the size of files,
 which leaves more headroom for a bigger kernel when
-operating at the limits of the zip format;
-\item extra-field quoting provides a way of combining quoting with bzip2.
+operating at the limits of the zip format.
+\item Extra-field quoting provides a way of combining quoting with bzip2.
 \end{enumerate}
+
 Despite these benefits, extra-field quoting is less flexible
 than DEFLATE quoting.
-It does not chain the way that DEFLATE quoting does:
-each local file header must quote not only the immediately following header
-but \emph{all} following headers.
-Because the extra field has a length limit of
+It does not chain like DEFLATE quoting does:
+each local file header must enclose not only the immediately next header
+but \emph{all} headers which follow.
+The extra fields increase in length as they get closer
+to the beginning of the zip file.
+Because the extra field has a maximum length of
 $2^{16}-1$~bytes,
 it is only possible to quote up to \num{1808}
-local file headers,
-or \num{1170} with Zip64
-(assuming filenames are allocated as in \autoref{sec:filenames}).
-You can use extra-field quoting for the first (shortest) local file headers,
-but then must switch to DEFLATE quoting for the rest.
-Another problem is that we must select a 16-bit type tag~\cite[\S 4.5.2]{appnote}.
-We want to avoid using a type tag that has already been allocated
-and has meaning to parsers, or else the quoted bytes will be interpreted
-as meaningful extra data.
+local file headers
+(or \num{1170} with Zip64),
+assuming that filenames are allocated as in \autoref{sec:filenames}.
+(In the case of DEFLATE,
+you can use extra-field quoting for the first (shortest) local file headers,
+then switch to DEFLATE quoting for the remainder.)
+Another problem is that, in order to conform
+to the internal data structure of the extra field,
+you must select a 16-bit type tag~\cite[\S 4.5.2]{appnote}
+to precede the quoted data.
+We want to choose a type tag that will cause parsers
+to ignore the quoted data, rather than trying to interpret it
+as meaningful metadata.
 Zip parsers are supposed to ignore unknown type tags,
 so we could choose a type tag at random,
-but there is the risk that a parser now or in the future
-will try to interpret it.
-Extra-field quoting increases the compression ratio of
+but there is the risk that the tag may be allocated in the future,
+breaking the compatibility of the construction.
+
+\autoref{fig:zipped-size}
+illustrates the possibility of using extra-field quoting
+with bzip2, with and without Zip64.
+Both lines have a knee at which
+the growth transitions from quadratic to linear.
+In the non-Zip64 case, the knee occurs where the maximum uncompressed file size
+($2^{32}-2$~bytes) is reached;
+after this point, one can only increase the number of files, not their size.
+The line ends completely when the number of files reaches \num{1809},
+when we run out of room in the
+extra field to quote quote additional headers.
+In the Zip64 case, the knee occurs at \num{1171} files,
+after which the size of files can be increased but not their number.
+Extra-field quoting also helps in the case of DEFLATE,
+but the difference is so slight as to be visually imperceptible
+and so it has been omitted from the figure.
+It increases the compression ratio of
 % zbsm.zip        5461307620 / 42374      128883.45730872705
 % zbsm.extra.zip  5525059932 / 42374      130387.97215273516
 % >>> 130387.97215273516 / 128883.45730872705 - 1.0
@@ -1427,12 +1468,12 @@ zbsm.zip by 1.2\%;
 % zblg.extra.zip  281399207414622 / 9891773       28447802.77657221
 % >>> 28447802.77657221 / 28442385.9286689 - 1.0
 % 0.00019044984189764413
-that of zblg.zip by 0.019\%;
+zblg.zip by 0.019\%;
 % zbxl.zip        4507981427706459 / 45876952     98262444.01996146
 % zbxl.extra.zip  4507981392085269 / 45875782     98264949.29471217
 % >>> "%.20f" % (98264949.29471217 / 98262444.01996146 - 1.0)
 % '0.00002549575044352714'
-and that of zbxl.zip by 0.0025\%.
+and zbxl.zip by 0.0025\%.
 
 
 \section{Discussion}
