@@ -1343,15 +1343,6 @@ and avoid the maximum values of 16-bit and 32-bit fields.
 \section{Extension: bzip2}
 \label{sec:bzip2}
 
-DEFLATE is the most common compression algorithm
-used in the zip format, but it is only one of many options~\cite[\S 4.4.5]{appnote}.
-bzip2~\cite{bzip2}, while not as compatible as DEFLATE (see \autoref{tab:compatibility}),
-is probably the second most commonly supported compression algorithm.
-Empirically, bzip2 has a maximum compression ratio of about 1.4~million,
-which allows for denser packing of the kernel.
-Ignoring the loss of compatibility,
-does bzip2 enable a more efficient zip bomb?
-
 % bzip2 starts with a run-length encoding step
 % that reduces the length of a string of repeated bytes
 % by a factor of~51.
@@ -1361,6 +1352,15 @@ does bzip2 enable a more efficient zip bomb?
 % Empirically, one block after run-length encoding
 % can compress down to 32~bytes.
 % 900 000 × 51 / 32 = 1 434 375.
+
+DEFLATE is the most common compression algorithm
+used in the zip format, but it is only one of many options~\cite[\S 4.4.5]{appnote}.
+bzip2~\cite{bzip2}, while not as compatible as DEFLATE (see \autoref{tab:compatibility}),
+is probably the second most commonly supported compression algorithm.
+Empirically, bzip2 has a maximum compression ratio of about 1.4~million,
+which allows for denser packing of the kernel.
+Ignoring the loss of compatibility,
+does bzip2 enable a more efficient zip bomb?
 
 Yes---but only for small files.
 The problem is that bzip2 does not have anything like the
@@ -1389,7 +1389,7 @@ which has no need for quoting.
 In \autoref{sec:quote} we used a feature of
 DEFLATE to quote local file headers,
 and in \autoref{sec:bzip2} we saw that the same trick
-did not work with bzip2.
+does not work with bzip2.
 There is an alternative means of quoting,
 somewhat more limited,
 that only uses features of the zip format
@@ -1526,31 +1526,26 @@ non-compressed block that quotes the next header.
 Not every file in the zip file has to participate in the bomb construction:
 you can also include ordinary files
 if needed to conform to some special format.
+(The source code has a \texttt{-{}-{}template}
+option to facilitate this use case.)
 Many file formats use zip as a container;
 examples are Java JAR, Android APK, and LibreOffice documents.
 
-Detecting the type of zip bomb we have developed is easy:
+Detecting the specific class of zip bomb we have developed in this article is easy:
 just look for overlapping files.
-Parse the central directory,
-then sort the central directory entries
-in order of the local file headers the point to.
-Reject the zip file if any file's ``compressed size''
-metadata field would make it overlap the following file.
-In general, though, rejecting overlapping files is not sufficient against all kinds of zip bombs.
-\autoref{sec:bzip2} and \autoref{fig:zipped-size}
-show that at small sizes, a non-overlapped bzip2 zip bomb
-is even more effective than
-the overlapped construction with DEFLATE.
-Trying to predict a zip file's total uncompressed size
-by peeking into the metadata and summing
+Mark Adler has written \href{https://github.com/madler/unzip/commits/6519bf0f8a896851d9708da11e1b63c818238c8f}{a patch}
+for Info-ZIP UnZip that does just that.
+In general, though, rejecting overlapping files
+does not protect against all classes of zip bomb.
+It is difficult to predict in advance
+whether a zip file is a bomb or not,
+unless you have precise knowledge of the internals of the parsers
+that will be used to parse it.
+Peeking into the headers and summing
 the ``uncompressed size'' fields of all files
 does not work, in general,
-because the value of the metadata field
-may not agree with the actual uncompressed size of the file.
-In general, trying to predict in advance whether a zip file
-is safe to open or not is fraught,
-because there are so many zip parser implementations
-that differ in behavior.
+because the value stored in the headers
+may not agree with the actual uncompressed size.
 Robust protection against zip bombs
 involves placing time, memory, and disk space limits
 on the zip parser while it operates.
@@ -1558,16 +1553,10 @@ Handle zip parsing,
 as any complex operation on untrusted data,
 with caution.
 
-% TODO
-% LibreOffice
-% addons.mozilla.org
-% Adler patch
-% https://github.com/madler/unzip/commits/6519bf0f8a896851d9708da11e1b63c818238c8f
-% https://github.com/madler/unzip/commit/47b3ceae397d21bf822bc2ac73052a4b1daf8e1c
 
 \section*{Acknowledgements}
 
-We thank
+I~thank
 Mark Adler,
 Russ Cox,
 Brandon Enright,
@@ -1586,9 +1575,8 @@ and the source code for the article itself
 as well as the diagrams
 are available from
 \url{https://www.bamsoftware.com/hacks/zipbomb/}.
-
-% TODO
-% artifact
+The artifacts prepared for WOOT are at
+\url{https://www.bamsoftware.com/hacks/zipbomb/zipbomb-woot19.zip}.
 
 \bibliographystyle{plain}
 \bibliography{zipbomb}
