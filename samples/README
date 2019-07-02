@@ -41,6 +41,14 @@ TZ=UTC zip -9 -X file_size_0xffffffff.zip pad
 rm -f pad
 ```
 
+short.zip
+Contains a file whose DEFLATE stream decompresses to 100 bytes, but
+whose declared uncompressed size is 50 bytes.
+
+long.zip
+Contains a file whose DEFLATE stream decompresses to 100 bytes, but
+whose declared uncompressed size is 200 bytes.
+
 
 ## How to test various zip parsers.
 
@@ -133,6 +141,7 @@ yauzl.open(process.argv[2], {lazyEntries: true}, (err, zipfile) => {
 Then run
 
 ```
+npm install yauzl
 node ziplist.js FILE.ZIP
 ```
 
