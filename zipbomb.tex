@@ -1270,6 +1270,15 @@ appear in \autoref{tab:comparison}.
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#52}{\yes} &
 \href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1465-L1469}{\no}
 \\
+\thead[r]{permits too-short file size} &
+\yes &
+\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L772}{\no} &
+\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L205-L207}{\no} &
+\href{https://github.com/thejoshwolfe/yauzl/blob/2.10.0/index.js#L641-L655}{\no} &
+\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L47}{\no} &
+\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#847}{\no} &
+\href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1113-L1124}{\no}
+\\
 \thead[r]{permits file size of $2^{32}-1$} &
 \yes &
 \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L1311-L1313}{\yes} &
