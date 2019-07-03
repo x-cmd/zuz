@@ -851,7 +851,7 @@ so our limits are actually $2^{16}-2$ and $2^{32}-2$.
 It happens that the first limit we hit is the one on uncompressed file size.
 At a zip file size of \SI{8319377}{bytes},
 naive optimization would give us a file count of \num{47837}
-and a largest file with the impossible size of
+and a largest file of
 $2^{32}+311$ bytes.
 % $compressed_size
 % [1] 4160277
@@ -1403,7 +1403,7 @@ The extra information may include, for example,
 a high-resolution timestamp or a Unix uid/gid;
 Zip64 information is stored in the extra field.
 The extra field is represented as a length--value structure;
-if we increase the length field without adding value,
+if we increase the length field without adding to the value,
 then the extra field will grow to include whatever
 comes after it in the zip file---namely
 the next local file header.
