@@ -1541,6 +1541,10 @@ It is difficult to predict in advance
 whether a zip file is a bomb or not,
 unless you have precise knowledge of the internals of the parsers
 that will be used to parse it.
+% TODO: clarify more.
+% There are other types of zip bombs.
+% Ambiguous parsing.
+% Different parsers \emph{may not even agree on what files the zip file contains}.
 Peeking into the headers and summing
 the ``uncompressed size'' fields of all files
 does not work, in general,
