@@ -2,6 +2,7 @@
 \usepackage{usenix2019_v3}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage[russian,english]{babel}
 \usepackage{fancyvrb}
 \usepackage{graphicx}
 \usepackage{makecell}
@@ -9,6 +10,9 @@
 \usepackage{threeparttable}
 \usepackage{xcolor}
 \usepackage[binary-units,number-unit-product=~]{siunitx}
+\usepackage{substitutefont}
+
+\substitutefont{T2A}{\familydefault}{Tempora-TLF}
 
 \urlstyle{same}
 \def\sectionautorefname{Section}
@@ -36,7 +40,7 @@
 \newcommand{\CDH}{\mathrm{CDH}}
 \newcommand{\LFH}{\mathrm{LFH}}
 \newcommand{\Q}{\mathrm{Q}}
-\newcommand{\C}{\mathrm{C}}
+\renewcommand{\C}{\mathrm{C}} % russian babel defines some \C
 \newcommand{\OPT}{\mathrm{OPT}}
 \newcommand{\bulkdeflate}{\mbox{bulk\_deflate}}
 \newcommand{\CRC}{\mbox{CRC-32}}
@@ -1041,6 +1045,7 @@ uint32 crc32_update_0(uint32 state) {
         state = state ^ 0xedb88320;
     return state;
 }
+
 uint32 crc32_update_1(uint32 state) {
     // Do as for a 0 bit, then XOR
     // with the CRC-32 constant.
@@ -1403,8 +1408,8 @@ there is a variable-length
 that doesn't fit into the ordinary fields of the header~\cite[\S 4.3.7]{appnote}.
 The extra information may include, for example,
 a high-resolution timestamp or a Unix uid/gid;
-Zip64 information is stored in the extra field.
-The extra field is represented as a length--value structure;
+Zip64 works by using the extra field.
+The extra field is a length--value structure:
 if we increase the length field without adding to the value,
 then the extra field will grow to include whatever
 comes after it in the zip file---namely
@@ -1439,7 +1444,7 @@ local file headers
 (or \num{1170} with Zip64),
 assuming that filenames are allocated as in \autoref{sec:filenames}.
 (In the case of DEFLATE,
-you can use extra-field quoting for the first (shortest) local file headers,
+you can use extra-field quoting for the earliest local file headers,
 then switch to DEFLATE quoting for the remainder.)
 Another problem is that, in order to conform
 to the internal data structure of the extra field,
@@ -1458,17 +1463,17 @@ illustrates the possibility of using extra-field quoting
 with bzip2, with and without Zip64.
 Both lines have a knee at which
 the growth transitions from quadratic to linear.
-In the non-Zip64 case, the knee occurs where the maximum uncompressed file size
-($2^{32}-2$~bytes) is reached;
+In the non-Zip64 case, the knee occurs at the maximum uncompressed file size
+($2^{32}-2$~bytes);
 after this point, one can only increase the number of files, not their size.
 The line ends completely when the number of files reaches \num{1809},
 when we run out of room in the
-extra field to quote quote additional headers.
+extra field to quote additional headers.
 In the Zip64 case, the knee occurs at \num{1171} files,
-after which the size of files can be increased but not their number.
+after which the size of files can be increased, but not their number.
 Extra-field quoting also helps in the case of DEFLATE,
-but the difference is so slight as to be visually imperceptible
-and so it has been omitted from the figure.
+but the improvement is so slight as to be visually imperceptible,
+so it has been omitted from the figure.
 It increases the compression ratio of
 % zbsm.zip        5461307620 / 42374      128883.45730872705
 % zbsm.extra.zip  5525059932 / 42374      130387.97215273516
@@ -1497,6 +1502,9 @@ near-self-replicating zip file.
 Gynvael Coldwind~\cite[p47]{gynvael}
 has previously suggested
 overlapping files in the style of \autoref{sec:overlap}.
+Pellegrino et~al.~\cite{190996}
+found systems vulnerable to resource exhaustion attacks
+including compression bombs.
 
 We have designed the quoted-overlap zip bomb construction for compatibility,
 taking into consideration a number of implementation differences,
@@ -1528,8 +1536,6 @@ non-compressed block that quotes the next header.
 Not every file in the zip file has to participate in the bomb construction:
 you can also include ordinary files
 if needed to conform to some special format.
-(The source code has a \texttt{-{}-{}template}
-option to facilitate this use case.)
 Many file formats use zip as a container;
 examples are Java JAR, Android APK, and LibreOffice documents.
 
@@ -1576,7 +1582,9 @@ and the WOOT reviewers
 for comments on a draft of this article.
 Caolán McNamara evaluated the security impact
 on LibreOffice.
-
+Mark Adler wrote a patch for UnZip.
+Habr user m1rko translated this article
+into Russian~\cite{habr}.
 
 \section*{Availability}
 
