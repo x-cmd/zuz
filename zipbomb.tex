@@ -10,9 +10,15 @@
 \usepackage{threeparttable}
 \usepackage{xcolor}
 \usepackage[binary-units,number-unit-product=~]{siunitx}
-\usepackage{substitutefont}
 
+% For Russian text.
+\usepackage{substitutefont}
 \substitutefont{T2A}{\familydefault}{Tempora-TLF}
+
+% Artifact evaluation badge.
+\usepackage[firstpage]{draftwatermark}
+\SetWatermarkText{\hspace*{6in}\raisebox{7.5in}{\includegraphics{usenix_artifact_evaluation_passed.pdf}}}
+\SetWatermarkAngle{0}
 
 \urlstyle{same}
 \def\sectionautorefname{Section}
