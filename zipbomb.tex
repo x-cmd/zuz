@@ -437,7 +437,7 @@ Quoted-overlap zip bomb construction
 (\autoref{sec:quote}).
 Each file contains the local file headers of all the files which follow it,
 as well as the kernel.
-The green parts stand for DEFLATE non-compressed blocks.
+The green parts stand for DEFLATE non-compressed blocks that ``quote'' the next local file header.
 }
 \label{fig:quote}
 \end{figure*}
@@ -902,7 +902,7 @@ the final \SI{54}{bytes} would cost more bytes than they are worth.
 of 28~million, and the final \SI{54}{bytes} would gain
 at most $54\cdot 1032\cdot (2^{16}-2) \approx 36.5~\mathrm{million}$ bytes,
 so it only helps if the \SI{54}{bytes} can be encoded
-in \SI{1}{byte}---we could not do it in less than~\num{2}.)
+in \SI{1}{byte}---I~could not do it in less than~\num{2}.)
 The output size of this zip bomb, \SI{281395456244934}{bytes},
 is 99.97\% of the theoretical maximum
 $(2^{32}-1)\cdot(2^{16}-1)$.
@@ -1282,15 +1282,15 @@ appear in \autoref{tab:comparison}.
 \href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L41}{\no} &
 \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#52}{\yes} &
 \href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1465-L1469}{\no}
-\\
-\thead[r]{permits too-short file size} &
-\yes &
-\href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L772}{\no} &
-\href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L205-L207}{\no} &
-\href{https://github.com/thejoshwolfe/yauzl/blob/2.10.0/index.js#L641-L655}{\no} &
-\href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L47}{\no} &
-\href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#847}{\no} &
-\href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1113-L1124}{\no}
+% \\
+% \thead[r]{permits too-short file size} &
+% \yes &
+% \href{https://github.com/python/cpython/blob/v3.7.0/Lib/zipfile.py#L772}{\no} &
+% \href{https://github.com/golang/go/blob/go1.12/src/archive/zip/reader.go#L205-L207}{\no} &
+% \href{https://github.com/thejoshwolfe/yauzl/blob/2.10.0/index.js#L641-L655}{\no} &
+% \href{https://github.com/jbangert/nail/blob/4bd9cc29c4092abe7a77f8294aff2337bba02ec5/examples/zip/zip.nail#L47}{\no} &
+% \href{https://android.googlesource.com/platform/system/core/+/refs/tags/android-9.0.0_r1/libziparchive/zip_archive.cc#847}{\no} &
+% \href{https://github.com/madler/sunzip/blob/v0.4/sunzip.c#L1113-L1124}{\no}
 \\
 \thead[r]{permits file size of $2^{32}-1$} &
 \yes &
@@ -1320,7 +1320,7 @@ appear in \autoref{tab:comparison}.
 \no &
 \no
 \\
-\thead[r]{unzips quoted overlap\\(\autoref{sec:quote})} &
+\thead[r]{unzips quoted overlap\\(zbsm and zblg, \autoref{sec:quote})} &
 \yes &
 \yes &
 \yes &
@@ -1329,7 +1329,7 @@ appear in \autoref{tab:comparison}.
 \yes &
 \no
 \\
-\thead[r]{unzips quoted overlap Zip64\\(\autoref{sec:zip64})} &
+\thead[r]{unzips quoted overlap Zip64\\(zbxl, \autoref{sec:zip64})} &
 \yes &
 \yes &
 \yes &
@@ -1339,14 +1339,14 @@ appear in \autoref{tab:comparison}.
 \no
 \end{tabular}
 \caption{
-Compatibility of selected zip parsers with various zip features,
+Compatibility of selected zip parsers with various features,
 edge cases,
 and zip bomb constructions.
 The background colors indicate a scale from \colorbox{ycolor}{less restrictive} to \colorbox{ncolor}{more restrictive}.
 For best compatibility,
 use DEFLATE compression without Zip64,
 match names in central directory headers and local file headers,
-compute correct CRCs,
+compute correct checksums,
 and avoid the maximum values of 16-bit and 32-bit fields.
 }
 \label{tab:compatibility}
@@ -1417,14 +1417,13 @@ a high-resolution timestamp or a Unix uid/gid;
 Zip64 works by using the extra field.
 The extra field is a length--value structure:
 if we increase the length field without adding to the value,
-then the extra field will grow to include whatever
+then it will grow to include whatever
 comes after it in the zip file---namely
 the next local file header.
-Using this technique, each local file header
-can ``quote'' the following local file headers
+Each local file header ``quotes'' the local file headers that follow it
 by enclosing them within its own extra field.
-The benefits of extra-field quoting,
-as compared to DEFLATE non-compressed block quoting,
+The benefits of extra-field quoting
+over DEFLATE quoting
 are threefold:
 
 \begin{enumerate}
@@ -1433,53 +1432,53 @@ not~\num{5}, leaving more room for the kernel.
 \item Extra-field quoting does not increase the size of files,
 which leaves more headroom for a bigger kernel when
 operating at the limits of the zip format.
-\item Extra-field quoting provides a way of combining quoting with bzip2.
+\item Extra-field quoting provides a way to combine quoting with bzip2.
 \end{enumerate}
 
 Despite these benefits, extra-field quoting is less flexible
 than DEFLATE quoting.
-It does not chain like DEFLATE quoting does:
+It does not chain:
 each local file header must enclose not only the immediately next header
 but \emph{all} headers which follow.
 The extra fields increase in length as they get closer
 to the beginning of the zip file.
 Because the extra field has a maximum length of
 $2^{16}-1$~bytes,
-it is only possible to quote up to \num{1808}
-local file headers
-(or \num{1170} with Zip64),
+it can only contain up to \num{1808}
+local file headers,
+or \num{1170} with Zip64,
 assuming that filenames are allocated as in \autoref{sec:filenames}.
-(In the case of DEFLATE,
+(With DEFLATE,
 you can use extra-field quoting for the earliest local file headers,
 then switch to DEFLATE quoting for the remainder.)
 Another problem is that, in order to conform
 to the internal data structure of the extra field,
-you must select a 16-bit type tag~\cite[\S 4.5.2]{appnote}
+we must select a 16-bit \emph{header~ID}~\cite[\S 4.5]{appnote}
 to precede the quoted data.
-We want to choose a type tag that will cause parsers
-to ignore the quoted data, rather than trying to interpret it
+We want a header~ID that will make parsers
+ignore the quoted data, not try to interpret it
 as meaningful metadata.
-Zip parsers are supposed to ignore unknown type tags,
-so we could choose a type tag at random,
-but there is the risk that the tag may be allocated in the future,
-breaking the compatibility of the construction.
+Zip parsers are supposed to ignore unknown header~IDs,
+so we could choose one at random,
+but there is the risk that the ID may be allocated in the future,
+breaking compatibility.
 
 \autoref{fig:zipped-size}
-illustrates the possibility of using extra-field quoting
+illustrates the possibility of combining extra-field quoting
 with bzip2, with and without Zip64.
-Both lines have a knee at which
+Both ``extra-field-quoted bzip2'' lines have a knee at which
 the growth transitions from quadratic to linear.
 In the non-Zip64 case, the knee occurs at the maximum uncompressed file size
 ($2^{32}-2$~bytes);
 after this point, one can only increase the number of files, not their size.
-The line ends completely when the number of files reaches \num{1809},
-when we run out of room in the
-extra field to quote additional headers.
+The line stops completely when the number of files reaches \num{1809},
+and we run out of room in the
+extra field.
 In the Zip64 case, the knee occurs at \num{1171} files,
 after which the size of files can be increased, but not their number.
-Extra-field quoting also helps in the case of DEFLATE,
-but the improvement is so slight as to be visually imperceptible,
-so it has been omitted from the figure.
+Extra-field quoting may also be used with DEFLATE,
+but the improvement is so slight
+that it has been omitted from the figure.
 It increases the compression ratio of
 % zbsm.zip        5461307620 / 42374      128883.45730872705
 % zbsm.extra.zip  5525059932 / 42374      130387.97215273516
@@ -1505,14 +1504,16 @@ In related work,
 Plötz et~al.~\cite[\S 4]{SAR-PR-2006-04}
 used overlapping files to create a
 near-self-replicating zip file.
-Gynvael Coldwind~\cite[p47]{gynvael}
+Gynvael Coldwind~\cite[p.~47]{gynvael}
 has previously suggested
 overlapping files in the style of \autoref{sec:overlap}.
 Pellegrino et~al.~\cite{190996}
-found systems vulnerable to resource exhaustion attacks
-including compression bombs.
+found systems vulnerable to compression bombs
+and other resource exhaustion attacks
+and listed common pitfalls in specification,
+implementation, and configuration.
 
-We have designed the quoted-overlap zip bomb construction for compatibility,
+The quoted-overlap zip bomb is designed for compatibility,
 taking into consideration a number of implementation differences,
 some of which are shown in \autoref{tab:compatibility}.
 The resulting construction is compatible with zip parsers that work
@@ -1536,42 +1537,43 @@ which parses the central directory at the end and checks it for consistency
 with the local file headers it has already seen.
 
 If you need the extracted files to start with a certain prefix
-other than the bytes of a local file header,
-you can insert a DEFLATE block before the
-non-compressed block that quotes the next header.
-Not every file in the zip file has to participate in the bomb construction:
-you can also include ordinary files
-if needed to conform to some special format.
+(so that they will be identified as a certain file type, for example),
+you can insert a data-carrying DEFLATE block just before the
+block that quotes the next header.
+Not every file has to participate in the bomb construction:
+you can include ordinary files
+alongside the bomb files
+if you need the zip file to conform to some higher-level format.
 Many file formats use zip as a container;
 examples are Java JAR, Android APK, and LibreOffice documents.
 
 Detecting the specific class of zip bomb we have developed in this article is easy:
-just look for overlapping files.
-Mark Adler has written \href{https://github.com/madler/unzip/commits/6519bf0f8a896851d9708da11e1b63c818238c8f}{a patch}
-for Info-ZIP UnZip that does just that.
+look for overlapping files.
+Mark Adler has written a patch
+for Info-ZIP UnZip that does just that~\cite{madler-patch}.
 In general, though, rejecting overlapping files
-does not protect against all classes of zip bomb.
-It is difficult to predict in advance
-whether a zip file is a bomb or not,
-unless you have precise knowledge of the internals of the parsers
-that will be used to parse it.
-% TODO: clarify more.
-% There are other types of zip bombs.
-% Ambiguous parsing.
-% Different parsers \emph{may not even agree on what files the zip file contains}.
-Peeking into the headers and summing
-the ``uncompressed size'' fields of all files
+does not by itself make it safe to handle untrusted zip files.
+There are zip bombs that do not rely on overlapping files,
+and there are malicious zip files that are not bombs.
+Furthermore, any such detection logic must
+be implemented inside the parser itself,
+not as a separate prefilter.
+One of the details
+omitted from \autoref{sec:zipstructure} is that
+there is no single well-defined algorithm for locating
+the central directory in a zip file:
+two parsers may find two different central directories
+and therefore
+may not even agree on what files a zip file contains~\cite[pp.~67--80]{gynvael}.
+Predicting the total unzipped size
+by summing the sizes of all files
 does not work, in general,
-because the value stored in the headers
-may not agree with the actual uncompressed size.
-(See the ``permits too-short file size'' row in \autoref{tab:compatibility}.)
+because the sizes stored in metadata may not match the actual uncompressed sizes~\cite[\S 4.2.2]{190996}.
 Robust protection against zip bombs
-involves placing time, memory, and disk space limits
-on the zip parser while it operates.
-Handle zip parsing,
-as any complex operation on untrusted data,
-with caution.
-
+involves sandboxing the parser to limit
+its use of time, memory, and disk space---just
+as if you were processing image files,
+or any other complex file format prone to parser bugs.
 
 \section*{Acknowledgements}
 
@@ -1596,8 +1598,7 @@ into Russian~\cite{habr}.
 
 The zip bombs developed in this article,
 the programs used to create them,
-and the source code for the article itself
-as well as the diagrams
+and the source code of the article itself
 are available from
 \url{https://www.bamsoftware.com/hacks/zipbomb/}.
 The artifacts prepared for WOOT are at
