@@ -1,0 +1,146 @@
+Dear author,
+
+The 13th USENIX Workshop on Offensive Technologies (WOOT '19 Artifact
+Evaluation) program committee is delighted to inform you that your artifact
+#4 has been accepted.
+
+       Title: A better zip bomb
+  Presenters: David Fifield (None)
+        Site: https://woot19ae.usenix.hotcrp.com/paper/4
+
+All submissions (6 out of 6) were accepted. Congratulations! We are very
+glad that this first edition of the Artifact Evaluation has gone well.
+
+
+Camera ready instructions
+-------------------------
+To advertise that your paper went through and passed the Artifact
+Evaluation, we are kindly asking you to add a badge to your paper, before
+sending it to camera ready. The badge is available at the following URL in
+PDF format:
+  https://usenix.box.com/s/etnf9tvy7wu34bx3pl5g5cqdfklljka9
+If you used the LaTeX template, here is a code snippet to add to your .tex
+preamble:
+
+\usepackage[firstpage]{draftwatermark}
+\SetWatermarkText{\hspace*{6in}\raisebox{7.5in}{\includegraphics{usenix_artifact_evaluation_passed.pdf}}}
+\SetWatermarkAngle{0}
+
+The badge should be placed in the upper-right hand corner of the first
+page. This simple code does not make the badge "aware" of the title, and
+thus you may have to play a bit with the line breaks of your title to make
+everything fit. Please try to keep the badge placement as is with ample
+margins on the right side of the badge. It should look approximately like
+this (borrowing the longest title of the paper that passed the Artifact
+Evaluation):
+  https://framapic.org/LBW1r4Ym9UMw/qzP8tvNvlHHV.png
+
+
+Reviews and comments
+--------------------
+Visit the submission site for reviews, comments, and related information.
+Reviews and comments are also included below.
+
+Contact woot19aec@usenix.org with any questions or concerns.
+
+
+Clémentine & Alex
+WOOT'19 Co-chairs
+
+
+Review #4A
+===========================================================================
+
+Overall merit
+-------------
+2. Accept
+
+Reviewer confidence
+-------------------
+3. High
+
+Artifact summary
+----------------
+The paper presents the construction of non-recursive zip bombs, that is,
+zip archives that a) have an incredible high compression rate that
+allows to crash a system by consuming masses of memory, and b) does not
+rely on nested folders/ archives. The authors demonstrate the
+practicability of the construction across implementations and provide
+easy to build program code that allows to reproduce all necessary steps.
+
+What steps did you take to evaluate the artifact?
+-------------------------------------------------
+Using the provided artifacts, I have been able to reproduce every single
+plot of the paper as well as the proposed zip bombs. Doing so has merely
+been a matter of running make in the individual directories. Although,
+I've built everything from scratch to verify the results, this is not a
+requirement as the authors provided intermediate results to start
+from.  
+For the most basic setting one only needs a working Python installation.
+Building everything in turn requires to install R including some
+additional packages as well as Asymptote. All these are however
+available as official packages for Ubuntu 18.04, which I've used for the
+evaluation.
+
+Comments for author
+-------------------
+Years ago zip bombs have been a major headache for decompression
+libraries and tools using such. For instance, they could be employed to
+crash and therefore bypass virus scanners. Nowadays, with the
+improvement of implementations and their adoption of decompressing zip
+files layer by layer this has lost relevance. It is particular
+interesting to see a construction that does not rely on a recursive
+structure and thus bringing zip bombs back into play again.
+
+The artifacts for the paper are easy to use and allow to reproduce all
+experiments as well as to regenerate all figures from these results. The
+submission is structured in different folders, all of which contain make
+files for running the experiments. As some of these are computationally
+rather expensive, the authors have provided intermediate data to ease
+the usage of the zip bomb construction. Very few additional manual steps
+(e.g. creating the `zipbomb.py` file in `figures/data`) are necessary.
+Automating these steps and providing/creating all files incl. links up
+front would be appreciated.
+
+Moreover, while there is everything here that is needed to reproduce
+this research work and I fully support a successful evaluation, I do
+feel that the documentation in form of the README files can be improved
+First, by going a little less puristic and using markdown as well as its
+suffix (*.md) would improve readability. Second, the text would benefit
+from more structure and a few introductory remarks. For instance, it
+might be useful to have a common section listing dependencies for each
+part---maybe even package names for a common OS (Debian, Arch, ...).
+
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Review #4B
+===========================================================================
+
+Overall merit
+-------------
+2. Accept
+
+Reviewer confidence
+-------------------
+3. High
+
+Artifact summary
+----------------
+The artifact contains all you need to run (i.e., is standalone and with non extraneous/vendored code), reproduce the findings and even re-create the figures. The instructions in the readme are quite clear on how to use the included scripts. Reading the paper is not necessary (but strongly encouraged) to get started creating your own zipbombs.
+
+What steps did you take to evaluate the artifact?
+-------------------------------------------------
+I created a series of Vagrantfiles with differently-sized disks. I was able to copy the artifact as-is and (after installing unzip, python and automake):
+
+1. run the pre-generated zipbombs and confirm that they, in fact, are zipbombs of the provided characteristics
+2. re-generate the zipbombs using the included standalone python script. I inspected such script to verify that there are no extraneous dependencies on any of the execution paths
+3. Reproduced a subset of Table 2 using the included snippets under the compatibility/ directory (unzip, golang archive/zip and python's zipfile module).
+
+Comments for author
+-------------------
+I believe this is a quite self-contained artifact. Good job making it easy to scrutinize and evaluate. If I had to suggest something that could've probably made it easier would've been to provide the snippets for compatibility testing as files that one could easily execute.
+
+Kudos for making the script python3 rather than python2. I took the liberty of running flake8 and I ran into a bunch of warnings (yet most of them are line-ending issues, which should be an easy fix). Although I think there's value on having a single zipbomb file, I wonder if the embedded GF/CRC functions could be moved somewhere else to improve readability.
+
